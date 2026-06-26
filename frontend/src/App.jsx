@@ -1,28 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key, 
+import {
+  Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key,
   LayoutDashboard, Users, Search, UserPlus, ShieldAlert, GraduationCap, MapPin, Inbox,
   Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X
 } from 'lucide-react';
 
-const API_BASE_URL = "http://localhost:8000";
+const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
   const [view, setView] = useState('login'); // 'login' | 'register' | 'verify-otp' | 'dashboard'
   const [portalTab, setPortalTab] = useState('dashboard'); // 'dashboard' | 'students' | 'search' | 'register_student' | 'edit_student'
-  
+
   // Auth Form States
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerFirstName, setRegisterFirstName] = useState('');
   const [registerLastName, setRegisterLastName] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
-  
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
-  
+
   // Feedback & Loading
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -109,7 +109,7 @@ function App() {
   // Fetch all students from backend with pagination
   const fetchStudents = async (page = 1) => {
     try {
-      const response = await fetch(`${API_BASE_URL}/students?page=${page}&limit=${STUDENTS_LIMIT}`);
+      const response = await fetch(`${API_URL}/students?page=${page}&limit=${STUDENTS_LIMIT}`);
       if (response.ok) {
         const data = await response.json();
         setStudents(data.students || []);
@@ -124,7 +124,7 @@ function App() {
   // Fetch stats count from backend
   const fetchStats = async () => {
     try {
-      const response = await fetch(`${API_BASE_URL}/students/stats`);
+      const response = await fetch(`${API_URL}/students/stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -151,15 +151,15 @@ function App() {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     clearNotifications();
-    
+
     if (registerPassword !== registerConfirmPassword) {
       setError("Passwords do not match.");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/register`, {
+      const response = await fetch(`${API_URL}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -169,16 +169,16 @@ function App() {
           password: registerPassword
         })
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || "Registration failed.");
       }
-      
+
       setSuccess("Account created successfully! Please sign in.");
       setView('login');
       setLoginEmail(registerEmail);
-      
+
       // Reset forms
       setRegisterEmail('');
       setRegisterFirstName('');
@@ -196,9 +196,9 @@ function App() {
     e.preventDefault();
     clearNotifications();
     setLoading(true);
-    
+
     try {
-      const response = await fetch(`${API_BASE_URL}/login`, {
+      const response = await fetch(`${API_URL}/login`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -206,12 +206,12 @@ function App() {
           password: loginPassword
         })
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || "Invalid email or password.");
       }
-      
+
       setSuccess("Verification OTP sent to your email!");
       setView('verify-otp');
     } catch (err) {
@@ -224,15 +224,15 @@ function App() {
   const handleOtpVerifySubmit = async (e) => {
     e.preventDefault();
     clearNotifications();
-    
+
     if (otpCode.length !== 6) {
       setError("Please enter a valid 6-digit OTP.");
       return;
     }
-    
+
     setLoading(true);
     try {
-      const response = await fetch(`${API_BASE_URL}/verify-otp`, {
+      const response = await fetch(`${API_URL}/verify-otp`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -240,12 +240,12 @@ function App() {
           otp: otpCode
         })
       });
-      
+
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || "Invalid verification code.");
       }
-      
+
       setCurrentUser(data.user);
       setView('dashboard');
       setPortalTab('dashboard');
@@ -302,7 +302,7 @@ function App() {
         date_of_leaving_the_hostel: dateOfLeavingTheHostel || null
       };
 
-      const response = await fetch(`${API_BASE_URL}/students`, {
+      const response = await fetch(`${API_URL}/students`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -314,7 +314,7 @@ function App() {
       }
 
       setSuccess(`Student "${fullName}" registered successfully!`);
-      
+
       // Reset form states
       setNewGr('');
       setOldGr('');
@@ -362,8 +362,8 @@ function App() {
       if (searchCity) queryParams.append('city', searchCity);
       queryParams.append('page', page);
       queryParams.append('limit', STUDENTS_LIMIT);
-      
-      const response = await fetch(`${API_BASE_URL}/students/search?${queryParams.toString()}`);
+
+      const response = await fetch(`${API_URL}/students/search?${queryParams.toString()}`);
       if (response.ok) {
         const data = await response.json();
         setSearchResults(data.students || []);
@@ -408,7 +408,7 @@ function App() {
     setEditLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_BASE_URL}/students/${id}`);
+      const response = await fetch(`${API_URL}/students/${id}`);
       const data = await response.json();
       if (!response.ok) {
         throw new Error(data.detail || `Student #${id} not found.`);
@@ -484,7 +484,7 @@ function App() {
         date_of_leaving_the_hostel: editDateOfLeavingTheHostel || null,
       };
 
-      const response = await fetch(`${API_BASE_URL}/students/${editStudentId}`, {
+      const response = await fetch(`${API_URL}/students/${editStudentId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -511,17 +511,17 @@ function App() {
           <div className="auth-container">
             <h1>Welcome Back</h1>
             <p className="subtitle">Sign in to initialize secure OTP verification</p>
-            
+
             {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
             {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
-            
+
             <form onSubmit={handleLoginSubmit}>
               <div className="form-group">
                 <label htmlFor="login-email">Email Address</label>
                 <div className="input-container">
-                  <input 
+                  <input
                     id="login-email"
-                    type="email" 
+                    type="email"
                     placeholder="name@domain.com"
                     value={loginEmail}
                     onChange={(e) => setLoginEmail(e.target.value)}
@@ -530,13 +530,13 @@ function App() {
                   <Mail className="input-icon" size={18} />
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label htmlFor="login-password">Password</label>
                 <div className="input-container">
-                  <input 
+                  <input
                     id="login-password"
-                    type="password" 
+                    type="password"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
@@ -545,7 +545,7 @@ function App() {
                   <Lock className="input-icon" size={18} />
                 </div>
               </div>
-              
+
               <button type="submit" disabled={loading}>
                 {loading ? "Authenticating..." : (
                   <>
@@ -554,9 +554,9 @@ function App() {
                 )}
               </button>
             </form>
-            
+
             <div className="auth-switch">
-              Don't have an account? 
+              Don't have an account?
               <span className="auth-link" onClick={() => { clearNotifications(); setView('register'); }}>Register here</span>
             </div>
           </div>
@@ -569,28 +569,28 @@ function App() {
           <div className="auth-container">
             <h1>Create Account</h1>
             <p className="subtitle">Join us today to set up your profile</p>
-            
+
             {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
-            
+
             <form onSubmit={handleRegisterSubmit}>
               <div className="form-group row">
                 <div>
                   <label htmlFor="reg-firstname">First Name</label>
-                  <input 
+                  <input
                     id="reg-firstname"
-                    type="text" 
+                    type="text"
                     placeholder="John"
                     value={registerFirstName}
                     onChange={(e) => setRegisterFirstName(e.target.value)}
                     required
                   />
                 </div>
-                
+
                 <div>
                   <label htmlFor="reg-lastname">Last Name</label>
-                  <input 
+                  <input
                     id="reg-lastname"
-                    type="text" 
+                    type="text"
                     placeholder="Doe"
                     value={registerLastName}
                     onChange={(e) => setRegisterLastName(e.target.value)}
@@ -598,24 +598,24 @@ function App() {
                   />
                 </div>
               </div>
-              
+
               <div className="form-group">
                 <label htmlFor="reg-email">Email Address</label>
-                <input 
+                <input
                   id="reg-email"
-                  type="email" 
+                  type="email"
                   placeholder="john.doe@example.com"
                   value={registerEmail}
                   onChange={(e) => setRegisterEmail(e.target.value)}
                   required
                 />
               </div>
-              
+
               <div className="form-group">
                 <label htmlFor="reg-password">Password</label>
-                <input 
+                <input
                   id="reg-password"
-                  type="password" 
+                  type="password"
                   placeholder="Min 6 characters"
                   value={registerPassword}
                   onChange={(e) => setRegisterPassword(e.target.value)}
@@ -625,16 +625,16 @@ function App() {
 
               <div className="form-group">
                 <label htmlFor="reg-confirmpass">Confirm Password</label>
-                <input 
+                <input
                   id="reg-confirmpass"
-                  type="password" 
+                  type="password"
                   placeholder="Re-enter password"
                   value={registerConfirmPassword}
                   onChange={(e) => setRegisterConfirmPassword(e.target.value)}
                   required
                 />
               </div>
-              
+
               <button type="submit" disabled={loading}>
                 {loading ? "Registering..." : (
                   <>
@@ -643,9 +643,9 @@ function App() {
                 )}
               </button>
             </form>
-            
+
             <div className="auth-switch">
-              Already have an account? 
+              Already have an account?
               <span className="auth-link" onClick={() => { clearNotifications(); setView('login'); }}>Sign in</span>
             </div>
           </div>
@@ -658,17 +658,17 @@ function App() {
           <div className="auth-container">
             <h1>OTP Verification</h1>
             <p className="subtitle">Enter the 6-digit verification code sent to <strong>{loginEmail}</strong></p>
-            
+
             {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
             {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
-            
+
             <form onSubmit={handleOtpVerifySubmit}>
               <div className="form-group">
                 <label htmlFor="otp-input">Verification Code</label>
                 <div className="input-container">
-                  <input 
+                  <input
                     id="otp-input"
-                    type="text" 
+                    type="text"
                     placeholder="123456"
                     maxLength={6}
                     value={otpCode}
@@ -679,14 +679,14 @@ function App() {
                   <Key className="input-icon" size={18} style={{ display: otpCode ? 'none' : 'block' }} />
                 </div>
               </div>
-              
+
               <button type="submit" disabled={loading}>
                 {loading ? "Verifying..." : "Verify & Log In"}
               </button>
             </form>
-            
+
             <div className="auth-switch">
-              Did not receive the code? 
+              Did not receive the code?
               <span className="auth-link" onClick={handleLoginSubmit}>Resend code</span>
               <br />
               <span className="auth-link" onClick={() => { clearNotifications(); setView('login'); }} style={{ marginTop: '12px', display: 'inline-block' }}>
@@ -700,7 +700,7 @@ function App() {
       {/* 4. Portal Dashboard (Sidebar Layout - Matches GitRAG reference) */}
       {view === 'dashboard' && currentUser && (
         <div className="portal-layout">
-          
+
           {/* Side Navbar */}
           <div className="sidebar">
             <div>
@@ -713,15 +713,15 @@ function App() {
               {/* Navigation Links */}
               <div className="nav-section-title">Navigation</div>
               <div className="nav-menu">
-                <div 
+                <div
                   className={`nav-item ${portalTab === 'dashboard' ? 'active' : ''}`}
                   onClick={() => { clearNotifications(); setPortalTab('dashboard'); }}
                 >
                   <LayoutDashboard className="nav-icon" size={18} />
                   <span>Dashboard</span>
                 </div>
-                
-                <div 
+
+                <div
                   className={`nav-item ${portalTab === 'students' ? 'active' : ''}`}
                   onClick={() => { clearNotifications(); setPortalTab('students'); }}
                 >
@@ -729,7 +729,7 @@ function App() {
                   <span>Students</span>
                 </div>
 
-                <div 
+                <div
                   className={`nav-item ${portalTab === 'search' ? 'active' : ''}`}
                   onClick={() => { clearNotifications(); setPortalTab('search'); }}
                 >
@@ -737,7 +737,7 @@ function App() {
                   <span>Search</span>
                 </div>
 
-                <div 
+                <div
                   className={`nav-item ${portalTab === 'register_student' ? 'active' : ''}`}
                   onClick={() => { clearNotifications(); setPortalTab('register_student'); }}
                 >
@@ -745,7 +745,7 @@ function App() {
                   <span>Register Student</span>
                 </div>
 
-                <div 
+                <div
                   className={`nav-item ${portalTab === 'edit_student' ? 'active' : ''}`}
                   onClick={() => { clearNotifications(); setPortalTab('edit_student'); setEditStudent(null); setEditStudentIdInput(''); setEditStudentId(null); }}
                 >
@@ -774,7 +774,7 @@ function App() {
 
           {/* Main Area Content */}
           <div className="main-content">
-            
+
             {/* View A: Dashboard Tab */}
             {portalTab === 'dashboard' && (
               <div>
@@ -873,81 +873,81 @@ function App() {
                 ) : (
                   <>
                     <div className="student-table-container">
-                    <table className="student-table">
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Name</th>
-                          <th>College Name</th>
-                          <th>City</th>
-                          <th>G.R. (New/Old)</th>
-                          <th>Contact</th>
-                          <th>Disabled?</th>
-                          <th>Orphan?</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {students.map((student) => (
-                          <tr 
-                            key={student.id} 
-                            onClick={() => setSelectedStudent(student)}
-                            style={{ cursor: 'pointer' }}
-                            title="Click to view full profile"
-                          >
-                            <td><strong>#{student.id}</strong></td>
-                            <td>
-                              <div style={{ fontWeight: 600 }}>{student.full_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>DOB: {student.dob}</div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>{student.college_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Yr: {student.current_year_of_study}</div>
-                            </td>
-                            <td>{student.city}</td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>New: {student.new_gr}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Old: {student.old_gr || 'N/A'} ({student.old_new})</div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>Std: {student.student_mobile_number}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Par: {student.parents_mobile_number}</div>
-                            </td>
-                            <td>
-                              <span className={`status-badge ${student.disabled ? 'yes' : 'no'}`}>
-                                {student.disabled ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={`status-badge ${student.orphan ? 'yes' : 'no'}`}>
-                                {student.orphan ? 'Yes' : 'No'}
-                              </span>
-                            </td>
+                      <table className="student-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>College Name</th>
+                            <th>City</th>
+                            <th>G.R. (New/Old)</th>
+                            <th>Contact</th>
+                            <th>Disabled?</th>
+                            <th>Orphan?</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* Pagination Controls */}
-                  <div className="pagination-controls">
-                    <button 
-                      onClick={() => setStudentsPage(Math.max(1, studentsPage - 1))}
-                      disabled={studentsPage === 1}
-                    >
-                      Previous Page
-                    </button>
-                    <span className="pagination-info">
-                      Page <strong>{studentsPage}</strong> of {Math.ceil(totalStudents / STUDENTS_LIMIT) || 1}
-                    </span>
-                    <button 
-                      onClick={() => setStudentsPage(studentsPage + 1)}
-                      disabled={studentsPage >= Math.ceil(totalStudents / STUDENTS_LIMIT)}
-                    >
-                      Next Page
-                    </button>
-                  </div>
-                </>
-              )}
+                        </thead>
+                        <tbody>
+                          {students.map((student) => (
+                            <tr
+                              key={student.id}
+                              onClick={() => setSelectedStudent(student)}
+                              style={{ cursor: 'pointer' }}
+                              title="Click to view full profile"
+                            >
+                              <td><strong>#{student.id}</strong></td>
+                              <td>
+                                <div style={{ fontWeight: 600 }}>{student.full_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>DOB: {student.dob}</div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>{student.college_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Yr: {student.current_year_of_study}</div>
+                              </td>
+                              <td>{student.city}</td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>New: {student.new_gr}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Old: {student.old_gr || 'N/A'} ({student.old_new})</div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>Std: {student.student_mobile_number}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Par: {student.parents_mobile_number}</div>
+                              </td>
+                              <td>
+                                <span className={`status-badge ${student.disabled ? 'yes' : 'no'}`}>
+                                  {student.disabled ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`status-badge ${student.orphan ? 'yes' : 'no'}`}>
+                                  {student.orphan ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Pagination Controls */}
+                    <div className="pagination-controls">
+                      <button
+                        onClick={() => setStudentsPage(Math.max(1, studentsPage - 1))}
+                        disabled={studentsPage === 1}
+                      >
+                        Previous Page
+                      </button>
+                      <span className="pagination-info">
+                        Page <strong>{studentsPage}</strong> of {Math.ceil(totalStudents / STUDENTS_LIMIT) || 1}
+                      </span>
+                      <button
+                        onClick={() => setStudentsPage(studentsPage + 1)}
+                        disabled={studentsPage >= Math.ceil(totalStudents / STUDENTS_LIMIT)}
+                      >
+                        Next Page
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -966,10 +966,10 @@ function App() {
                       <div className="search-field">
                         <label htmlFor="search-name">Search Name</label>
                         <div className="search-input-wrapper">
-                          <input 
+                          <input
                             id="search-name"
-                            type="text" 
-                            placeholder="e.g. Rahul" 
+                            type="text"
+                            placeholder="e.g. Rahul"
                             value={searchName}
                             onChange={(e) => setSearchName(e.target.value)}
                           />
@@ -980,10 +980,10 @@ function App() {
                       <div className="search-field">
                         <label htmlFor="search-college">Search College</label>
                         <div className="search-input-wrapper">
-                          <input 
+                          <input
                             id="search-college"
-                            type="text" 
-                            placeholder="e.g. Delhi University" 
+                            type="text"
+                            placeholder="e.g. Delhi University"
                             value={searchCollege}
                             onChange={(e) => setSearchCollege(e.target.value)}
                           />
@@ -994,10 +994,10 @@ function App() {
                       <div className="search-field">
                         <label htmlFor="search-city">Search City</label>
                         <div className="search-input-wrapper">
-                          <input 
+                          <input
                             id="search-city"
-                            type="text" 
-                            placeholder="e.g. Delhi" 
+                            type="text"
+                            placeholder="e.g. Delhi"
                             value={searchCity}
                             onChange={(e) => setSearchCity(e.target.value)}
                           />
@@ -1025,81 +1025,81 @@ function App() {
                 ) : (
                   <>
                     <div className="student-table-container">
-                    <table className="student-table">
-                      <thead>
-                        <tr>
-                          <th>ID</th>
-                          <th>Name</th>
-                          <th>College Name</th>
-                          <th>City</th>
-                          <th>G.R. (New/Old)</th>
-                          <th>Contact</th>
-                          <th>Disabled?</th>
-                          <th>Orphan?</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {searchResults.map((student) => (
-                          <tr 
-                            key={student.id}
-                            onClick={() => setSelectedStudent(student)}
-                            style={{ cursor: 'pointer' }}
-                            title="Click to view full profile"
-                          >
-                            <td><strong>#{student.id}</strong></td>
-                            <td>
-                              <div style={{ fontWeight: 600 }}>{student.full_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>DOB: {student.dob}</div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>{student.college_name}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Yr: {student.current_year_of_study}</div>
-                            </td>
-                            <td>{student.city}</td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>New: {student.new_gr}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Old: {student.old_gr || 'N/A'} ({student.old_new})</div>
-                            </td>
-                            <td>
-                              <div style={{ fontSize: '0.85rem' }}>Std: {student.student_mobile_number}</div>
-                              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Par: {student.parents_mobile_number}</div>
-                            </td>
-                            <td>
-                              <span className={`status-badge ${student.disabled ? 'yes' : 'no'}`}>
-                                {student.disabled ? 'Yes' : 'No'}
-                              </span>
-                            </td>
-                            <td>
-                              <span className={`status-badge ${student.orphan ? 'yes' : 'no'}`}>
-                                {student.orphan ? 'Yes' : 'No'}
-                              </span>
-                            </td>
+                      <table className="student-table">
+                        <thead>
+                          <tr>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>College Name</th>
+                            <th>City</th>
+                            <th>G.R. (New/Old)</th>
+                            <th>Contact</th>
+                            <th>Disabled?</th>
+                            <th>Orphan?</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+                        </thead>
+                        <tbody>
+                          {searchResults.map((student) => (
+                            <tr
+                              key={student.id}
+                              onClick={() => setSelectedStudent(student)}
+                              style={{ cursor: 'pointer' }}
+                              title="Click to view full profile"
+                            >
+                              <td><strong>#{student.id}</strong></td>
+                              <td>
+                                <div style={{ fontWeight: 600 }}>{student.full_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>DOB: {student.dob}</div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>{student.college_name}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Yr: {student.current_year_of_study}</div>
+                              </td>
+                              <td>{student.city}</td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>New: {student.new_gr}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Old: {student.old_gr || 'N/A'} ({student.old_new})</div>
+                              </td>
+                              <td>
+                                <div style={{ fontSize: '0.85rem' }}>Std: {student.student_mobile_number}</div>
+                                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Par: {student.parents_mobile_number}</div>
+                              </td>
+                              <td>
+                                <span className={`status-badge ${student.disabled ? 'yes' : 'no'}`}>
+                                  {student.disabled ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                              <td>
+                                <span className={`status-badge ${student.orphan ? 'yes' : 'no'}`}>
+                                  {student.orphan ? 'Yes' : 'No'}
+                                </span>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
 
-                  {/* Pagination Controls */}
-                  <div className="pagination-controls">
-                    <button 
-                      onClick={() => setSearchPage(Math.max(1, searchPage - 1))}
-                      disabled={searchPage === 1}
-                    >
-                      Previous Page
-                    </button>
-                    <span className="pagination-info">
-                      Page <strong>{searchPage}</strong> of {Math.ceil(searchTotalMatches / STUDENTS_LIMIT) || 1}
-                    </span>
-                    <button 
-                      onClick={() => setSearchPage(searchPage + 1)}
-                      disabled={searchPage >= Math.ceil(searchTotalMatches / STUDENTS_LIMIT)}
-                    >
-                      Next Page
-                    </button>
-                  </div>
-                </>
-              )}
+                    {/* Pagination Controls */}
+                    <div className="pagination-controls">
+                      <button
+                        onClick={() => setSearchPage(Math.max(1, searchPage - 1))}
+                        disabled={searchPage === 1}
+                      >
+                        Previous Page
+                      </button>
+                      <span className="pagination-info">
+                        Page <strong>{searchPage}</strong> of {Math.ceil(searchTotalMatches / STUDENTS_LIMIT) || 1}
+                      </span>
+                      <button
+                        onClick={() => setSearchPage(searchPage + 1)}
+                        disabled={searchPage >= Math.ceil(searchTotalMatches / STUDENTS_LIMIT)}
+                      >
+                        Next Page
+                      </button>
+                    </div>
+                  </>
+                )}
               </div>
             )}
 
@@ -1114,7 +1114,7 @@ function App() {
                 {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
 
                 <form onSubmit={handleRegisterStudent} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
-                  
+
                   {/* Category 1: G.R. Info */}
                   <div className="dashboard-widget" style={{ padding: '24px' }}>
                     <h3 className="widget-title" style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-card)', paddingBottom: '10px' }}>
@@ -1123,9 +1123,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group">
                         <label htmlFor="std-newgr">NEW G.R. Number</label>
-                        <input 
+                        <input
                           id="std-newgr"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. GR-2026/05"
                           value={newGr}
                           onChange={(e) => setNewGr(e.target.value)}
@@ -1135,9 +1135,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-oldgr">OLD G.R. Number</label>
-                        <input 
+                        <input
                           id="std-oldgr"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. GR-2025/11"
                           value={oldGr}
                           onChange={(e) => setOldGr(e.target.value)}
@@ -1147,9 +1147,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-oldnew">Old / New Status</label>
-                        <input 
+                        <input
                           id="std-oldnew"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. New Admission"
                           value={oldNew}
                           onChange={(e) => setOldNew(e.target.value)}
@@ -1168,9 +1168,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group">
                         <label htmlFor="std-name">Full Name</label>
-                        <input 
+                        <input
                           id="std-name"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Rahul Ramesh Sharma"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
@@ -1179,9 +1179,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-dob">Date of Birth</label>
-                        <input 
+                        <input
                           id="std-dob"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. 15-08-2005"
                           value={dob}
                           onChange={(e) => setDob(e.target.value)}
@@ -1190,9 +1190,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-phone">Student Mobile Number</label>
-                        <input 
+                        <input
                           id="std-phone"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. 9876543210"
                           value={studentMobileNumber}
                           onChange={(e) => setStudentMobileNumber(e.target.value)}
@@ -1201,9 +1201,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-pphone">Parents Mobile Number</label>
-                        <input 
+                        <input
                           id="std-pphone"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. 9876500000"
                           value={parentsMobileNumber}
                           onChange={(e) => setParentsMobileNumber(e.target.value)}
@@ -1221,9 +1221,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group">
                         <label htmlFor="std-city">City / Village</label>
-                        <input 
+                        <input
                           id="std-city"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Pune"
                           value={city}
                           onChange={(e) => setCity(e.target.value)}
@@ -1232,9 +1232,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-taluka">Taluka</label>
-                        <input 
+                        <input
                           id="std-taluka"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Haveli"
                           value={taluka}
                           onChange={(e) => setTaluka(e.target.value)}
@@ -1244,9 +1244,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-district">District</label>
-                        <input 
+                        <input
                           id="std-district"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Pune"
                           value={district}
                           onChange={(e) => setDistrict(e.target.value)}
@@ -1256,9 +1256,9 @@ function App() {
                       </div>
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label htmlFor="std-caste">Caste</label>
-                        <input 
+                        <input
                           id="std-caste"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Maratha"
                           value={caste}
                           onChange={(e) => setCaste(e.target.value)}
@@ -1268,9 +1268,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-category">Category</label>
-                        <input 
+                        <input
                           id="std-category"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. General / OBC / SC"
                           value={category}
                           onChange={(e) => setCategory(e.target.value)}
@@ -1289,9 +1289,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label htmlFor="std-college">College Name</label>
-                        <input 
+                        <input
                           id="std-college"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Fergusson College, Pune"
                           value={collegeName}
                           onChange={(e) => setCollegeName(e.target.value)}
@@ -1300,9 +1300,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-year">Current Year of Study</label>
-                        <input 
+                        <input
                           id="std-year"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. SY B.Sc"
                           value={currentYearOfStudy}
                           onChange={(e) => setCurrentYearOfStudy(e.target.value)}
@@ -1311,9 +1311,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-lastexam">Last Exam Taken</label>
-                        <input 
+                        <input
                           id="std-lastexam"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. FY B.Sc Semester 2"
                           value={lastExam}
                           onChange={(e) => setLastExam(e.target.value)}
@@ -1322,9 +1322,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-lastexamyr">Last Exam Year</label>
-                        <input 
+                        <input
                           id="std-lastexamyr"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. 2025"
                           value={lastExamYear}
                           onChange={(e) => setLastExamYear(e.target.value)}
@@ -1333,9 +1333,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-percentage">Percentage Obtained</label>
-                        <input 
+                        <input
                           id="std-percentage"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. 78.5%"
                           value={percentage}
                           onChange={(e) => setPercentage(e.target.value)}
@@ -1353,9 +1353,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group">
                         <label htmlFor="std-block">Block</label>
-                        <input 
+                        <input
                           id="std-block"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Block A"
                           value={block}
                           onChange={(e) => setBlock(e.target.value)}
@@ -1365,9 +1365,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-room">Room Number</label>
-                        <input 
+                        <input
                           id="std-room"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Room 204"
                           value={roomNo}
                           onChange={(e) => setRoomNo(e.target.value)}
@@ -1377,9 +1377,9 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-income">Parents Annual Income</label>
-                        <input 
+                        <input
                           id="std-income"
-                          type="text" 
+                          type="text"
                           placeholder="e.g. Rs. 1,20,000"
                           value={parentsIncome}
                           onChange={(e) => setParentsIncome(e.target.value)}
@@ -1395,7 +1395,7 @@ function App() {
                       Hostel Support Eligibility Toggles
                     </h3>
                     <div className="toggle-switch-container" style={{ margin: '16px 0 0 0' }}>
-                      <div 
+                      <div
                         className={`toggle-item ${disabled ? 'checked' : ''}`}
                         onClick={() => setDisabled(!disabled)}
                       >
@@ -1405,7 +1405,7 @@ function App() {
                         <span className="toggle-label">Is Disabled</span>
                       </div>
 
-                      <div 
+                      <div
                         className={`toggle-item ${fatherIsDeceased ? 'checked' : ''}`}
                         onClick={() => setFatherIsDeceased(!fatherIsDeceased)}
                       >
@@ -1415,7 +1415,7 @@ function App() {
                         <span className="toggle-label">Father is Deceased</span>
                       </div>
 
-                      <div 
+                      <div
                         className={`toggle-item ${orphan ? 'checked' : ''}`}
                         onClick={() => setOrphan(!orphan)}
                       >
@@ -1435,9 +1435,9 @@ function App() {
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
                       <div className="form-group">
                         <label htmlFor="std-currdate">Registration Date (Today)</label>
-                        <input 
+                        <input
                           id="std-currdate"
-                          type="date" 
+                          type="date"
                           value={currDate}
                           onChange={(e) => setCurrDate(e.target.value)}
                           required
@@ -1445,25 +1445,25 @@ function App() {
                       </div>
                       <div className="form-group">
                         <label htmlFor="std-leavedate">Hostel Leaving Date (Optional)</label>
-                        <input 
+                        <input
                           id="std-leavedate"
-                          type="date" 
+                          type="date"
                           value={dateOfLeavingTheHostel}
                           onChange={(e) => setDateOfLeavingTheHostel(e.target.value)}
                         />
                       </div>
                       <div className="form-group" style={{ gridColumn: 'span 2' }}>
                         <label htmlFor="std-note">Special Notes (Optional)</label>
-                        <textarea 
+                        <textarea
                           id="std-note"
                           placeholder="e.g. Any special medical condition or guardian info..."
                           value={specialNote}
                           onChange={(e) => setSpecialNote(e.target.value)}
-                          style={{ 
-                            width: '100%', 
-                            padding: '14px 16px', 
-                            background: 'rgba(255, 255, 255, 0.02)', 
-                            border: '1.5px solid var(--border-card)', 
+                          style={{
+                            width: '100%',
+                            padding: '14px 16px',
+                            background: 'rgba(255, 255, 255, 0.02)',
+                            border: '1.5px solid var(--border-card)',
                             border_radius: '12px',
                             color: 'var(--text-primary)',
                             fontFamily: 'var(--font-family)',
@@ -1510,10 +1510,10 @@ function App() {
                         placeholder="Enter student ID (e.g. 1, 2, 3...)"
                         value={editStudentIdInput}
                         onChange={(e) => setEditStudentIdInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { setEditStudentId(editStudentIdInput); fetchStudentById(editStudentIdInput); }}}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { setEditStudentId(editStudentIdInput); fetchStudentById(editStudentIdInput); } }}
                       />
                     </div>
-                    <button 
+                    <button
                       type="button"
                       disabled={editLoading || !editStudentIdInput}
                       style={{
@@ -1532,7 +1532,7 @@ function App() {
                         transition: 'all 0.25s ease',
                         flexShrink: 0,
                       }}
-                      onMouseEnter={e => { if (!editLoading && editStudentIdInput) { e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed, #b59dfb)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.45)'; }}}
+                      onMouseEnter={e => { if (!editLoading && editStudentIdInput) { e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed, #b59dfb)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.45)'; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6, #a78bfa)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.3)'; }}
                       onClick={() => { setEditStudentId(editStudentIdInput); fetchStudentById(editStudentIdInput); }}
                     >
@@ -1752,13 +1752,13 @@ function App() {
                 )}
               </div>
             )}
-            
+
           </div>
         </div>
       )}
       {/* Student Detail Modal */}
       {selectedStudent && (
-        <div 
+        <div
           className="student-modal-overlay"
           onClick={(e) => { if (e.target === e.currentTarget) setSelectedStudent(null); }}
         >
