@@ -560,7 +560,7 @@ function App() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `students_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+      a.download = `students_export_${new Date().toISOString().slice(0, 10)}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -578,7 +578,7 @@ function App() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `students_export_${new Date().toISOString().slice(0,10)}.pdf`;
+      a.download = `students_export_${new Date().toISOString().slice(0, 10)}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -665,7 +665,7 @@ function App() {
                   width: 32, height: 32, borderRadius: '50%',
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   fontSize: '0.85rem', fontWeight: 600,
-                  background: forgotStep === s ? 'var(--accent)' : ((['email','otp','reset'].indexOf(forgotStep) > i) ? 'var(--accent-muted)' : 'var(--surface-2)'),
+                  background: forgotStep === s ? 'var(--accent)' : ((['email', 'otp', 'reset'].indexOf(forgotStep) > i) ? 'var(--accent-muted)' : 'var(--surface-2)'),
                   color: forgotStep === s ? '#fff' : 'var(--text-muted)',
                   border: forgotStep === s ? '2px solid var(--accent)' : '2px solid transparent',
                   transition: 'all 0.3s'
@@ -1380,7 +1380,7 @@ function App() {
                         <label htmlFor="std-dob">Date of Birth</label>
                         <input
                           id="std-dob"
-                          type="text"
+                          type="date"
                           placeholder="e.g. 15-08-2005"
                           value={dob}
                           onChange={(e) => setDob(e.target.value)}
