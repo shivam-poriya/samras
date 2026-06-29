@@ -8,20 +8,21 @@ import {
 const API_URL = import.meta.env.VITE_API_URL;
 
 function App() {
-  const [view, setView] = useState('login'); // 'login' | 'register' | 'verify-otp' | 'dashboard'
+  const [view, setView] = useState('login'); // 'login' | 'forgot-password' | 'verify-otp' | 'dashboard'
   const [portalTab, setPortalTab] = useState('dashboard'); // 'dashboard' | 'students' | 'search' | 'register_student' | 'edit_student'
 
   // Auth Form States
-  const [registerEmail, setRegisterEmail] = useState('');
-  const [registerFirstName, setRegisterFirstName] = useState('');
-  const [registerLastName, setRegisterLastName] = useState('');
-  const [registerPassword, setRegisterPassword] = useState('');
-  const [registerConfirmPassword, setRegisterConfirmPassword] = useState('');
-
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [currentUser, setCurrentUser] = useState(null);
+
+  // Forgot Password States
+  const [forgotEmail, setForgotEmail] = useState('');
+  const [forgotOtp, setForgotOtp] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [forgotStep, setForgotStep] = useState('email'); // 'email' | 'otp' | 'reset'
 
   // Feedback & Loading
   const [error, setError] = useState('');
@@ -147,44 +148,87 @@ function App() {
     setSuccess('');
   };
 
-  // Auth Submit Handlers
-  const handleRegisterSubmit = async (e) => {
+  // Forgot Password Handlers
+  const handleForgotPasswordSubmit = async (e) => {
     e.preventDefault();
     clearNotifications();
-
-    if (registerPassword !== registerConfirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
-
     setLoading(true);
     try {
-      const response = await fetch(`${API_URL}/register`, {
+      const response = await fetch(`${API_URL}/forgot-password`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: registerEmail,
-          first_name: registerFirstName,
-          last_name: registerLastName,
-          password: registerPassword
-        })
+        body: JSON.stringify({ email: forgotEmail })
       });
-
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || "Registration failed.");
+        throw new Error(data.detail || 'Something went wrong.');
       }
+      setSuccess('If this email is registered, an OTP has been sent to it.');
+      setForgotStep('otp');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-      setSuccess("Account created successfully! Please sign in.");
+  const handleVerifyForgotOtp = async (e) => {
+    e.preventDefault();
+    clearNotifications();
+    if (forgotOtp.length !== 6) {
+      setError('Please enter a valid 6-digit OTP.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/verify-forgot-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Invalid or expired OTP.');
+      }
+      setSuccess('OTP verified! Please set your new password.');
+      setForgotStep('reset');
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResetPassword = async (e) => {
+    e.preventDefault();
+    clearNotifications();
+    if (newPassword !== confirmNewPassword) {
+      setError('Passwords do not match.');
+      return;
+    }
+    if (newPassword.length < 6) {
+      setError('Password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const response = await fetch(`${API_URL}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotEmail, otp: forgotOtp, new_password: newPassword })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Password reset failed.');
+      }
+      setSuccess('Password reset successfully! Please sign in with your new password.');
+      // Clean up and redirect to login
+      setForgotEmail('');
+      setForgotOtp('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setForgotStep('email');
       setView('login');
-      setLoginEmail(registerEmail);
-
-      // Reset forms
-      setRegisterEmail('');
-      setRegisterFirstName('');
-      setRegisterLastName('');
-      setRegisterPassword('');
-      setRegisterConfirmPassword('');
     } catch (err) {
       setError(err.message);
     } finally {
@@ -556,97 +600,137 @@ function App() {
             </form>
 
             <div className="auth-switch">
-              Don't have an account?
-              <span className="auth-link" onClick={() => { clearNotifications(); setView('register'); }}>Register here</span>
+              <span className="auth-link" onClick={() => { clearNotifications(); setForgotStep('email'); setView('forgot-password'); }}>Forgot Password?</span>
             </div>
           </div>
         </div>
       )}
 
-      {/* 2. Registration Screen */}
-      {view === 'register' && (
+      {/* 2. Forgot Password Screen (3-step flow) */}
+      {view === 'forgot-password' && (
         <div className="auth-layout-wrapper">
           <div className="auth-container">
-            <h1>Create Account</h1>
-            <p className="subtitle">Join us today to set up your profile</p>
+
+            {/* Step indicators */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '24px', justifyContent: 'center' }}>
+              {['email', 'otp', 'reset'].map((s, i) => (
+                <div key={s} style={{
+                  width: 32, height: 32, borderRadius: '50%',
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  fontSize: '0.85rem', fontWeight: 600,
+                  background: forgotStep === s ? 'var(--accent)' : ((['email','otp','reset'].indexOf(forgotStep) > i) ? 'var(--accent-muted)' : 'var(--surface-2)'),
+                  color: forgotStep === s ? '#fff' : 'var(--text-muted)',
+                  border: forgotStep === s ? '2px solid var(--accent)' : '2px solid transparent',
+                  transition: 'all 0.3s'
+                }}>{i + 1}</div>
+              ))}
+            </div>
 
             {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
+            {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
 
-            <form onSubmit={handleRegisterSubmit}>
-              <div className="form-group row">
-                <div>
-                  <label htmlFor="reg-firstname">First Name</label>
-                  <input
-                    id="reg-firstname"
-                    type="text"
-                    placeholder="John"
-                    value={registerFirstName}
-                    onChange={(e) => setRegisterFirstName(e.target.value)}
-                    required
-                  />
+            {/* Step 1: Email */}
+            {forgotStep === 'email' && (
+              <>
+                <h1>Forgot Password</h1>
+                <p className="subtitle">Enter your registered email to receive an OTP</p>
+                <form onSubmit={handleForgotPasswordSubmit}>
+                  <div className="form-group">
+                    <label htmlFor="forgot-email">Email Address</label>
+                    <div className="input-container">
+                      <input
+                        id="forgot-email"
+                        type="email"
+                        placeholder="name@domain.com"
+                        value={forgotEmail}
+                        onChange={(e) => setForgotEmail(e.target.value)}
+                        required
+                      />
+                      <Mail className="input-icon" size={18} />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading}>
+                    {loading ? 'Sending OTP...' : (<><span>Send OTP</span> <ArrowRight size={18} /></>)}
+                  </button>
+                </form>
+              </>
+            )}
+
+            {/* Step 2: OTP Verification */}
+            {forgotStep === 'otp' && (
+              <>
+                <h1>Enter OTP</h1>
+                <p className="subtitle">Enter the 6-digit code sent to <strong>{forgotEmail}</strong></p>
+                <form onSubmit={handleVerifyForgotOtp}>
+                  <div className="form-group">
+                    <label htmlFor="forgot-otp">Verification Code</label>
+                    <div className="input-container">
+                      <input
+                        id="forgot-otp"
+                        type="text"
+                        placeholder="123456"
+                        maxLength={6}
+                        value={forgotOtp}
+                        onChange={(e) => setForgotOtp(e.target.value.replace(/\D/g, ''))}
+                        required
+                        style={{ letterSpacing: '8px', textAlign: 'center', fontSize: '1.25rem', paddingLeft: '16px' }}
+                      />
+                      <Key className="input-icon" size={18} style={{ display: forgotOtp ? 'none' : 'block' }} />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading}>
+                    {loading ? 'Verifying...' : (<><span>Verify OTP</span> <ArrowRight size={18} /></>)}
+                  </button>
+                </form>
+                <div className="auth-switch">
+                  <span className="auth-link" onClick={handleForgotPasswordSubmit}>Resend OTP</span>
                 </div>
+              </>
+            )}
 
-                <div>
-                  <label htmlFor="reg-lastname">Last Name</label>
-                  <input
-                    id="reg-lastname"
-                    type="text"
-                    placeholder="Doe"
-                    value={registerLastName}
-                    onChange={(e) => setRegisterLastName(e.target.value)}
-                    required
-                  />
-                </div>
-              </div>
+            {/* Step 3: New Password */}
+            {forgotStep === 'reset' && (
+              <>
+                <h1>Reset Password</h1>
+                <p className="subtitle">Choose a strong new password for your account</p>
+                <form onSubmit={handleResetPassword}>
+                  <div className="form-group">
+                    <label htmlFor="new-password">New Password</label>
+                    <div className="input-container">
+                      <input
+                        id="new-password"
+                        type="password"
+                        placeholder="Min 6 characters"
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        required
+                      />
+                      <Lock className="input-icon" size={18} />
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="confirm-new-password">Confirm New Password</label>
+                    <div className="input-container">
+                      <input
+                        id="confirm-new-password"
+                        type="password"
+                        placeholder="Re-enter new password"
+                        value={confirmNewPassword}
+                        onChange={(e) => setConfirmNewPassword(e.target.value)}
+                        required
+                      />
+                      <Lock className="input-icon" size={18} />
+                    </div>
+                  </div>
+                  <button type="submit" disabled={loading}>
+                    {loading ? 'Resetting...' : (<><span>Reset Password</span> <ArrowRight size={18} /></>)}
+                  </button>
+                </form>
+              </>
+            )}
 
-              <div className="form-group">
-                <label htmlFor="reg-email">Email Address</label>
-                <input
-                  id="reg-email"
-                  type="email"
-                  placeholder="john.doe@example.com"
-                  value={registerEmail}
-                  onChange={(e) => setRegisterEmail(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="reg-password">Password</label>
-                <input
-                  id="reg-password"
-                  type="password"
-                  placeholder="Min 6 characters"
-                  value={registerPassword}
-                  onChange={(e) => setRegisterPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="reg-confirmpass">Confirm Password</label>
-                <input
-                  id="reg-confirmpass"
-                  type="password"
-                  placeholder="Re-enter password"
-                  value={registerConfirmPassword}
-                  onChange={(e) => setRegisterConfirmPassword(e.target.value)}
-                  required
-                />
-              </div>
-
-              <button type="submit" disabled={loading}>
-                {loading ? "Registering..." : (
-                  <>
-                    <span>Create Account</span> <ArrowRight size={18} />
-                  </>
-                )}
-              </button>
-            </form>
-
-            <div className="auth-switch">
-              Already have an account?
-              <span className="auth-link" onClick={() => { clearNotifications(); setView('login'); }}>Sign in</span>
+            <div className="auth-switch" style={{ marginTop: '20px' }}>
+              <span className="auth-link" onClick={() => { clearNotifications(); setForgotStep('email'); setView('login'); }}>Back to Login</span>
             </div>
           </div>
         </div>
