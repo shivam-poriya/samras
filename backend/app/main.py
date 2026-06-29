@@ -1,8 +1,13 @@
+import io
 import random
 from datetime import datetime, timedelta, timezone
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+import openpyxl
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.utils import get_column_letter
 
 from .database import engine, Base, get_db
 from .models import User, Student
@@ -246,6 +251,78 @@ def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db))
     user.otp_expiry = None
     db.commit()
     return {"message": "Password has been reset successfully. You may now log in."}
+
+
+# --- Export Endpoints ---
+
+@app.get("/students/export")
+def export_students_excel(db: Session = Depends(get_db)):
+    """
+    Exports all student records to an Excel (.xlsx) file and streams it
+    back as a downloadable attachment.
+    """
+    students = db.query(Student).order_by(Student.id.asc()).all()
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Students"
+
+    # Define column headers
+    headers = [
+        "ID", "New GR", "Old GR", "Old/New", "Full Name", "Date of Birth",
+        "City", "Taluka", "District", "Caste", "Category", "Block",
+        "Room No", "Last Exam", "Last Exam Year", "Percentage",
+        "Current Year of Study", "College Name", "Parents Income",
+        "Student Mobile", "Parents Mobile", "Disabled", "Father Deceased",
+        "Orphan", "Registration Date", "Date of Leaving", "Special Note"
+    ]
+
+    # Style header row
+    header_fill = PatternFill(start_color="6D28D9", end_color="6D28D9", fill_type="solid")
+    header_font = Font(bold=True, color="FFFFFF", size=11)
+    header_align = Alignment(horizontal="center", vertical="center")
+
+    for col_idx, header in enumerate(headers, start=1):
+        cell = ws.cell(row=1, column=col_idx, value=header)
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = header_align
+
+    # Write student rows
+    for row_idx, s in enumerate(students, start=2):
+        ws.append([
+            s.id, s.new_gr, s.old_gr, s.old_new, s.full_name, s.dob,
+            s.city, s.taluka, s.district, s.caste, s.category, s.block,
+            s.room_no, s.last_exam, s.last_exam_year, s.percentage,
+            s.current_year_of_study, s.college_name, s.parents_income,
+            s.student_mobile_number, s.parents_mobile_number,
+            "Yes" if s.disabled else "No",
+            "Yes" if s.father_is_deceased else "No",
+            "Yes" if s.orphan else "No",
+            str(s.curr_date) if s.curr_date else "",
+            str(s.date_of_leaving_the_hostel) if s.date_of_leaving_the_hostel else "",
+            s.special_note or ""
+        ])
+
+    # Auto-fit column widths
+    for col in ws.columns:
+        max_len = max((len(str(cell.value)) if cell.value else 0) for cell in col)
+        ws.column_dimensions[get_column_letter(col[0].column)].width = min(max_len + 4, 40)
+
+    # Stream the workbook as bytes
+    output = io.BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    filename = f"students_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx"
+    headers_resp = {
+        "Content-Disposition": f'attachment; filename="{filename}"'
+    }
+    return StreamingResponse(
+        output,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers=headers_resp
+    )
 
 
 # --- Student Hostel API Routes ---

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key,
   LayoutDashboard, Users, Search, UserPlus, ShieldAlert, GraduationCap, MapPin, Inbox,
-  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X, Eye, EyeOff
+  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X, Eye, EyeOff, Download
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -552,6 +552,24 @@ function App() {
     }
   };
 
+  const handleExportExcel = async () => {
+    try {
+      const response = await fetch(`${API_URL}/students/export`);
+      if (!response.ok) throw new Error('Export failed.');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `students_export_${new Date().toISOString().slice(0,10)}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Failed to export Excel file. Please try again.');
+    }
+  };
+
   return (
     <>
       {/* 1. Login Screen */}
@@ -886,8 +904,28 @@ function App() {
             {portalTab === 'dashboard' && (
               <div>
                 <div className="page-header">
-                  <h2 className="page-title">Dashboard Overview</h2>
-                  <p className="page-description">Overview of hostel occupancies and student profiles</p>
+                  <div>
+                    <h2 className="page-title">Dashboard Overview</h2>
+                    <p className="page-description">Overview of hostel occupancies and student profiles</p>
+                  </div>
+                  <button
+                    id="export-excel-btn"
+                    onClick={handleExportExcel}
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '8px',
+                      padding: '10px 20px', borderRadius: '10px',
+                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                      color: '#fff', fontWeight: 600, fontSize: '0.9rem',
+                      border: 'none', cursor: 'pointer',
+                      boxShadow: '0 4px 14px rgba(22,163,74,0.35)',
+                      transition: 'all 0.2s',
+                      whiteSpace: 'nowrap'
+                    }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                  >
+                    <Download size={16} /> Export to Excel
+                  </button>
                 </div>
 
                 {/* 3 Metric Card Boxes (Hostel, Disabled, Orphan counts) */}
@@ -944,6 +982,14 @@ function App() {
                       </div>
                       <span className="action-title">View Directory</span>
                       <p className="action-desc">Browse through the list of currently registered students.</p>
+                    </div>
+
+                    <div className="action-card" onClick={handleExportExcel}>
+                      <div className="action-icon" style={{ background: 'linear-gradient(135deg,#16a34a,#15803d)' }}>
+                        <Download size={20} />
+                      </div>
+                      <span className="action-title">Export to Excel</span>
+                      <p className="action-desc">Download all student records as a formatted Excel spreadsheet.</p>
                     </div>
 
                     <div className="action-card" onClick={() => setPortalTab('search')}>
