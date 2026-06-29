@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 
 from .database import engine, Base, get_db
 from .models import User, Student
-from .schemas import UserCreate, UserResponse, UserLogin, LoginResponse, LoginInitiateResponse, VerifyOTPRequest, StudentCreate, StudentResponse, StudentStatsResponse, PaginatedStudentResponse, StudentUpdate
+from .schemas import UserCreate, UserResponse, UserLogin, LoginResponse, LoginInitiateResponse, VerifyOTPRequest, StudentCreate, StudentResponse, StudentStatsResponse, PaginatedStudentResponse, StudentUpdate, ForgotPasswordRequest, VerifyForgotOTPRequest, ResetPasswordRequest
 from .auth import hash_password, verify_password
 from .email import send_otp_email
 
@@ -166,6 +166,87 @@ def verify_otp(request: VerifyOTPRequest, db: Session = Depends(get_db)):
         "message": "Login successful",
         "user": user
     }
+
+# --- Forgot Password Flow ---
+
+@app.post("/forgot-password", status_code=status.HTTP_200_OK)
+def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Initiates forgot-password OTP flow.
+    Generates OTP, stores with 5-min expiry, sends to email.
+    Returns generic message regardless of whether email exists.
+    """
+    user = db.query(User).filter(User.email == request.email).first()
+    if user:
+        otp = f"{random.randint(100000, 999999)}"
+        user.otp = otp
+        user.otp_expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
+        db.commit()
+        send_otp_email(user.email, otp)
+    return {"message": "If this email is registered, an OTP has been sent to it."}
+
+
+@app.post("/verify-forgot-otp", status_code=status.HTTP_200_OK)
+def verify_forgot_otp(request: VerifyForgotOTPRequest, db: Session = Depends(get_db)):
+    """
+    Validates OTP for password reset.
+    OTP is kept (not cleared) so /reset-password can re-verify it.
+    """
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user or not user.otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active OTP session found for this email."
+        )
+    if user.otp != request.otp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid verification code."
+        )
+    current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+    if user.otp_expiry and user.otp_expiry < current_time:
+        user.otp = None
+        user.otp_expiry = None
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired. Please request a new one."
+        )
+    return {"message": "OTP verified successfully. You may now reset your password."}
+
+
+@app.post("/reset-password", status_code=status.HTTP_200_OK)
+def reset_password(request: ResetPasswordRequest, db: Session = Depends(get_db)):
+    """
+    Resets user password after re-validating OTP.
+    Hashes new password, saves to DB, clears OTP session.
+    """
+    user = db.query(User).filter(User.email == request.email).first()
+    if not user or not user.otp:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="No active OTP session found. Please start the forgot-password flow again."
+        )
+    if user.otp != request.otp:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid verification code."
+        )
+    current_time = datetime.now(timezone.utc).replace(tzinfo=None)
+    if user.otp_expiry and user.otp_expiry < current_time:
+        user.otp = None
+        user.otp_expiry = None
+        db.commit()
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Verification code has expired. Please start the forgot-password flow again."
+        )
+    user.hashed_password = hash_password(request.new_password)
+    user.otp = None
+    user.otp_expiry = None
+    db.commit()
+    return {"message": "Password has been reset successfully. You may now log in."}
+
 
 # --- Student Hostel API Routes ---
 
