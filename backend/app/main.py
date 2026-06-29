@@ -26,7 +26,10 @@ Base.metadata.create_all(bind=engine)
 app = FastAPI(
     title="User Registration API",
     description="A basic registration API built with FastAPI and PostgreSQL",
-    version="1.1.0"  # added forgot-password flow
+    version="1.1.0",  # added forgot-password flow
+    docs_url=None,    # Disable Swagger UI
+    redoc_url=None,   # Disable ReDoc
+    openapi_url=None  # Disable OpenAPI schema
 )
 
 # Configure CORS Middleware to allow requests from the React frontend
