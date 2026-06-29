@@ -570,6 +570,24 @@ function App() {
     }
   };
 
+  const handleExportPdf = async () => {
+    try {
+      const response = await fetch(`${API_URL}/students/export-pdf`);
+      if (!response.ok) throw new Error('PDF Export failed.');
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `students_export_${new Date().toISOString().slice(0,10)}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('Failed to export PDF file. Please try again.');
+    }
+  };
+
   return (
     <>
       {/* 1. Login Screen */}
@@ -908,24 +926,44 @@ function App() {
                     <h2 className="page-title">Dashboard Overview</h2>
                     <p className="page-description">Overview of hostel occupancies and student profiles</p>
                   </div>
-                  <button
-                    id="export-excel-btn"
-                    onClick={handleExportExcel}
-                    style={{
-                      display: 'flex', alignItems: 'center', gap: '8px',
-                      padding: '10px 20px', borderRadius: '10px',
-                      background: 'linear-gradient(135deg, #16a34a, #15803d)',
-                      color: '#fff', fontWeight: 600, fontSize: '0.9rem',
-                      border: 'none', cursor: 'pointer',
-                      boxShadow: '0 4px 14px rgba(22,163,74,0.35)',
-                      transition: 'all 0.2s',
-                      whiteSpace: 'nowrap'
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
-                  >
-                    <Download size={16} /> Export to Excel
-                  </button>
+                  <div className="page-header-actions">
+                    <button
+                      id="export-pdf-btn"
+                      onClick={handleExportPdf}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '10px 20px', borderRadius: '10px',
+                        background: 'linear-gradient(135deg, #dc2626, #b91c1c)',
+                        color: '#fff', fontWeight: 600, fontSize: '0.9rem',
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(220,38,38,0.35)',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                      <Download size={16} /> Export to PDF
+                    </button>
+                    <button
+                      id="export-excel-btn"
+                      onClick={handleExportExcel}
+                      style={{
+                        display: 'flex', alignItems: 'center', gap: '8px',
+                        padding: '10px 20px', borderRadius: '10px',
+                        background: 'linear-gradient(135deg, #16a34a, #15803d)',
+                        color: '#fff', fontWeight: 600, fontSize: '0.9rem',
+                        border: 'none', cursor: 'pointer',
+                        boxShadow: '0 4px 14px rgba(22,163,74,0.35)',
+                        transition: 'all 0.2s',
+                        whiteSpace: 'nowrap'
+                      }}
+                      onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-2px)'}
+                      onMouseLeave={e => e.currentTarget.style.transform = 'translateY(0)'}
+                    >
+                      <Download size={16} /> Export to Excel
+                    </button>
+                  </div>
                 </div>
 
                 {/* 3 Metric Card Boxes (Hostel, Disabled, Orphan counts) */}
@@ -982,6 +1020,14 @@ function App() {
                       </div>
                       <span className="action-title">View Directory</span>
                       <p className="action-desc">Browse through the list of currently registered students.</p>
+                    </div>
+
+                    <div className="action-card" onClick={handleExportPdf}>
+                      <div className="action-icon" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}>
+                        <Download size={20} />
+                      </div>
+                      <span className="action-title">Export to PDF</span>
+                      <p className="action-desc">Download all student records as a printable PDF report.</p>
                     </div>
 
                     <div className="action-card" onClick={handleExportExcel}>

@@ -9,6 +9,11 @@ import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
 
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import landscape, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph
+from reportlab.lib.styles import getSampleStyleSheet
+
 from .database import engine, Base, get_db
 from .models import User, Student
 from .schemas import UserCreate, UserResponse, UserLogin, LoginResponse, LoginInitiateResponse, VerifyOTPRequest, StudentCreate, StudentResponse, StudentStatsResponse, PaginatedStudentResponse, StudentUpdate, ForgotPasswordRequest, VerifyForgotOTPRequest, ResetPasswordRequest
@@ -324,9 +329,88 @@ def export_students_excel(db: Session = Depends(get_db)):
         headers=headers_resp
     )
 
+@app.get("/students/export-pdf")
+def export_students_pdf(db: Session = Depends(get_db)):
+    """
+    Exports all student records to a PDF file and streams it
+    back as a downloadable attachment.
+    """
+    students = db.query(Student).order_by(Student.id.asc()).all()
+
+    output = io.BytesIO()
+    # Use landscape A4 for wide tables
+    doc = SimpleDocTemplate(output, pagesize=landscape(A4), rightMargin=20, leftMargin=20, topMargin=20, bottomMargin=20)
+    elements = []
+
+    styles = getSampleStyleSheet()
+    title = Paragraph("Hostel Students Report", styles['Title'])
+    elements.append(title)
+
+    # Define column headers (We'll use a subset to fit on PDF, otherwise it goes off page)
+    # Using a condensed set of columns for the PDF to ensure it fits nicely
+    headers = [
+        "ID", "GR No", "Name", "City", "Mobile", "College", "Category", "Hostel Stay"
+    ]
+    
+    data = [headers]
+
+    for s in students:
+        hostel_stay = "Present"
+        if s.date_of_leaving_the_hostel:
+            hostel_stay = f"Left: {s.date_of_leaving_the_hostel}"
+            
+        data.append([
+            str(s.id),
+            str(s.new_gr),
+            s.full_name[:20] + "..." if len(s.full_name) > 20 else s.full_name, # Truncate long names
+            s.city[:15],
+            s.student_mobile_number,
+            s.college_name[:15] + "..." if s.college_name and len(s.college_name) > 15 else (s.college_name or ""),
+            s.category or "",
+            hostel_stay
+        ])
+
+    table = Table(data, colWidths=[30, 50, 140, 90, 80, 140, 70, 90])
+    
+    table.setStyle(TableStyle([
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor("#dc2626")),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+        ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+        ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+        ('FONTSIZE', (0, 0), (-1, 0), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+        ('GRID', (0, 0), (-1, -1), 1, colors.black),
+        ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+        ('FONTSIZE', (0, 1), (-1, -1), 9),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+    ]))
+    
+    # Alternate row colors
+    for i in range(1, len(data)):
+        if i % 2 == 0:
+            bc = colors.whitesmoke
+        else:
+            bc = colors.lightgrey
+        table.setStyle(TableStyle([('BACKGROUND', (0, i), (-1, i), bc)]))
+
+    elements.append(table)
+    doc.build(elements)
+    output.seek(0)
+
+    filename = f"students_export_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+    headers_resp = {
+        "Content-Disposition": f'attachment; filename="{filename}"'
+    }
+    
+    return StreamingResponse(
+        output,
+        media_type="application/pdf",
+        headers=headers_resp
+    )
+
 
 # --- Student Hostel API Routes ---
-
 @app.post("/students", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
 def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     """
