@@ -29,10 +29,14 @@ app = FastAPI(
     version="1.1.0"  # added forgot-password flow
 )
 
-# Configure CORS Middleware to allow requests from the React dev server
+# Configure CORS Middleware to allow requests from the React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allows all origins for local development
+    allow_origins=[
+        "https://samras-96zh.vercel.app",  # Production frontend
+        "http://localhost:5173",           # Local development
+        "http://localhost:5174",           # Local development alternative
+    ],
     allow_credentials=True,
     allow_methods=["*"],  # Allows all HTTP methods (GET, POST, etc.)
     allow_headers=["*"],  # Allows all headers
