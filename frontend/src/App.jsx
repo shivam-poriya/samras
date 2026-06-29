@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key,
   LayoutDashboard, Users, Search, UserPlus, ShieldAlert, GraduationCap, MapPin, Inbox,
-  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X
+  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X, Eye, EyeOff
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -23,6 +23,11 @@ function App() {
   const [newPassword, setNewPassword] = useState('');
   const [confirmNewPassword, setConfirmNewPassword] = useState('');
   const [forgotStep, setForgotStep] = useState('email'); // 'email' | 'otp' | 'reset'
+
+  // Show/hide password toggles
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Feedback & Loading
   const [error, setError] = useState('');
@@ -580,13 +585,19 @@ function App() {
                 <div className="input-container">
                   <input
                     id="login-password"
-                    type="password"
+                    type={showLoginPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                   />
-                  <Lock className="input-icon" size={18} />
+                  <span
+                    className="input-icon"
+                    onClick={() => setShowLoginPassword(v => !v)}
+                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                  >
+                    {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </span>
                 </div>
               </div>
 
@@ -699,13 +710,19 @@ function App() {
                     <div className="input-container">
                       <input
                         id="new-password"
-                        type="password"
+                        type={showNewPassword ? 'text' : 'password'}
                         placeholder="Min 6 characters"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
                       />
-                      <Lock className="input-icon" size={18} />
+                      <span
+                        className="input-icon"
+                        onClick={() => setShowNewPassword(v => !v)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </span>
                     </div>
                   </div>
                   <div className="form-group">
@@ -713,13 +730,19 @@ function App() {
                     <div className="input-container">
                       <input
                         id="confirm-new-password"
-                        type="password"
+                        type={showConfirmPassword ? 'text' : 'password'}
                         placeholder="Re-enter new password"
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
                         required
                       />
-                      <Lock className="input-icon" size={18} />
+                      <span
+                        className="input-icon"
+                        onClick={() => setShowConfirmPassword(v => !v)}
+                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                      >
+                        {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </span>
                     </div>
                   </div>
                   <button type="submit" disabled={loading}>
