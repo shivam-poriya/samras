@@ -109,5 +109,14 @@ class StudentUpdate(BaseModel):
     date_of_leaving_the_hostel: date | None = None
 
 
+class ForgotPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., description="User's registered email address")
 
+class VerifyForgotOTPRequest(BaseModel):
+    email: EmailStr = Field(..., description="User's registered email address")
+    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code sent to email")
 
+class ResetPasswordRequest(BaseModel):
+    email: EmailStr = Field(..., description="User's registered email address")
+    otp: str = Field(..., min_length=6, max_length=6, description="6-digit OTP code for verification")
+    new_password: str = Field(..., min_length=6, description="New password (minimum 6 characters)")
