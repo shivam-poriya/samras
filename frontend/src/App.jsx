@@ -586,15 +586,15 @@ function App() {
                   <input
                     id="login-password"
                     type={showLoginPassword ? 'text' : 'password'}
+                    className="has-right-icon"
                     placeholder="••••••••"
                     value={loginPassword}
                     onChange={(e) => setLoginPassword(e.target.value)}
                     required
                   />
                   <span
-                    className="input-icon"
+                    className="input-icon-right"
                     onClick={() => setShowLoginPassword(v => !v)}
-                    style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                   >
                     {showLoginPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </span>
@@ -711,15 +711,15 @@ function App() {
                       <input
                         id="new-password"
                         type={showNewPassword ? 'text' : 'password'}
+                        className="has-right-icon"
                         placeholder="Min 6 characters"
                         value={newPassword}
                         onChange={(e) => setNewPassword(e.target.value)}
                         required
                       />
                       <span
-                        className="input-icon"
+                        className="input-icon-right"
                         onClick={() => setShowNewPassword(v => !v)}
-                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
                         {showNewPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </span>
@@ -731,15 +731,15 @@ function App() {
                       <input
                         id="confirm-new-password"
                         type={showConfirmPassword ? 'text' : 'password'}
+                        className="has-right-icon"
                         placeholder="Re-enter new password"
                         value={confirmNewPassword}
                         onChange={(e) => setConfirmNewPassword(e.target.value)}
                         required
                       />
                       <span
-                        className="input-icon"
+                        className="input-icon-right"
                         onClick={() => setShowConfirmPassword(v => !v)}
-                        style={{ cursor: 'pointer', display: 'flex', alignItems: 'center' }}
                       >
                         {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                       </span>

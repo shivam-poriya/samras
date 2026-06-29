@@ -144,6 +144,27 @@ form button[type="button"]:disabled,
   transition: var(--transition-smooth);
 }
 
+/* Right-side clickable icon (show/hide password toggle) */
+.input-container .input-icon-right {
+  position: absolute;
+  right: 14px;
+  color: var(--text-muted);
+  pointer-events: all;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  display: flex;
+  align-items: center;
+  user-select: none;
+}
+
+.input-container .input-icon-right:hover {
+  color: var(--primary);
+}
+
+.input-container input.has-right-icon {
+  padding-right: 44px;
+}
+
 .input-container input:focus ~ .input-icon {
   color: var(--primary);
   filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.6));
