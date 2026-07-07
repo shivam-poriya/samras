@@ -1,13 +1,17 @@
 import io
+import re
+import os
+import tempfile
 import random
 from datetime import datetime, timedelta, timezone
-from fastapi import FastAPI, Depends, HTTPException, status
+from fastapi import FastAPI, Depends, HTTPException, status, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 import openpyxl
 from openpyxl.styles import Font, PatternFill, Alignment
 from openpyxl.utils import get_column_letter
+import pdfplumber
 
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import landscape, A4
@@ -27,9 +31,9 @@ app = FastAPI(
     title="User Registration API",
     description="A basic registration API built with FastAPI and PostgreSQL",
     version="1.1.0",  # added forgot-password flow
-    docs_url=None,    # Disable Swagger UI
-    redoc_url=None,   # Disable ReDoc
-    openapi_url=None  # Disable OpenAPI schema
+    docs_url="/docs",    # Enable Swagger UI
+    redoc_url="/redoc",   # Enable ReDoc
+    openapi_url="/openapi.json"  # Enable OpenAPI schema
 )
 
 # Configure CORS Middleware to allow requests from the React frontend
@@ -38,6 +42,7 @@ app.add_middleware(
     allow_origins=[
         "https://samras-96zh.vercel.app",  # Production frontend
         "http://localhost:5173",           # Local development
+        "http://127.0.0.1:5173",           # Local development (127.0.0.1)
         "http://localhost:5174",           # Local development alternative
     ],
     allow_credentials=True,
@@ -417,12 +422,297 @@ def export_students_pdf(db: Session = Depends(get_db)):
     )
 
 
+# --- PDF Parsing Endpoint ---
+
+def _extract_field(text: str, *patterns: str) -> str | None:
+    """
+    Try multiple regex patterns on the full PDF text and return the first match.
+    Each pattern should contain one capture group for the value.
+    """
+    for pattern in patterns:
+        match = re.search(pattern, text, re.IGNORECASE | re.MULTILINE)
+        if match:
+            val = match.group(1).strip()
+            if val and val.lower() not in ('na', 'n/a', '*' * len(val)):
+                return val
+    return None
+
+
+def _parse_bool_field(text: str, *patterns: str) -> bool:
+    """
+    Returns True if the matched value is 'yes', False otherwise.
+    """
+    val = _extract_field(text, *patterns)
+    return val is not None and val.lower() == 'yes'
+
+
+def _convert_date(raw: str | None) -> str | None:
+    """
+    Convert DD/MM/YYYY  →  YYYY-MM-DD for HTML date inputs.
+    Also handles DD-MM-YYYY. Returns None if conversion fails.
+    """
+    if not raw:
+        return None
+    for fmt in ('%d/%m/%Y', '%d-%m-%Y', '%Y-%m-%d'):
+        try:
+            return datetime.strptime(raw.strip(), fmt).strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    return None
+
+
+def _parse_address(raw: str | None) -> dict:
+    """
+    Best-effort parse of a Samras residential address string like:
+      'B-1209, Suman sangath, beside of silver coin, vip circle road, utran, Surat., Surat - 394105'
+    Returns dict with 'city', 'taluka', 'district'.
+    Strategy: split by comma, last meaningful token before pincode = district,
+    second-to-last = city, third-to-last = taluka.
+    """
+    result = {'city': '', 'taluka': '', 'district': ''}
+    if not raw:
+        return result
+    # Remove pincode
+    cleaned = re.sub(r'\s*-\s*\d{6}\b', '', raw)
+    # Remove trailing dots
+    cleaned = re.sub(r'\.+', '', cleaned)
+    parts = [p.strip() for p in cleaned.split(',') if p.strip()]
+    if len(parts) >= 1:
+        result['district'] = parts[-1]
+    if len(parts) >= 2:
+        result['city'] = parts[-2]
+    if len(parts) >= 3:
+        result['taluka'] = parts[-3]
+    return result
+
+
+def _parse_caste(raw: str | None) -> dict:
+    """
+    Split 'SEBC,  Prajapati' or 'SC  Chamar' into category + caste.
+    Known categories: General, OBC, SEBC, SC, ST, EWS.
+    """
+    result = {'category': '', 'caste': ''}
+    if not raw:
+        return result
+    categories = ['General', 'OBC', 'SEBC', 'SC', 'ST', 'EWS']
+    for cat in categories:
+        pattern = re.compile(rf'^{cat}[,\s]+(.+)$', re.IGNORECASE)
+        m = pattern.match(raw.strip())
+        if m:
+            result['category'] = cat.upper()
+            result['caste'] = m.group(1).strip()
+            return result
+    # Fallback: raw is caste only
+    result['caste'] = raw.strip()
+    return result
+
+
+@app.post("/parse-pdf", status_code=status.HTTP_200_OK)
+async def parse_student_pdf(file: UploadFile = File(...)):
+    """
+    Accepts a Samras hostel application PDF, extracts student data,
+    and returns it as a JSON object to auto-fill the registration form.
+
+    The parser works pattern-based, not value-hardcoded, so it handles
+    any future PDF that follows the same Samras application table layout.
+    """
+    # --- Validate file type ---
+    if not file.filename or not file.filename.lower().endswith('.pdf'):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid file type. Please upload a PDF file."
+        )
+    if file.content_type and 'pdf' not in file.content_type.lower():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid content type. Only PDF files are accepted."
+        )
+
+    # --- Parse PDF directly from memory ---
+    try:
+        content = await file.read()
+        if len(content) == 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="The uploaded PDF file is empty."
+            )
+
+        # --- Extract all text from PDF ---
+        try:
+            import io
+            full_text = ''
+            with pdfplumber.open(io.BytesIO(content)) as pdf:
+                for page in pdf.pages:
+                    page_text = page.extract_text()
+                    if page_text:
+                        full_text += page_text + '\n'
+        except Exception as e:
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail=f"Failed to read PDF content. The file may be corrupted or password-protected. ({str(e)})"
+            )
+
+        if not full_text.strip():
+            raise HTTPException(
+                status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                detail="No readable text found in the PDF. The file may contain only scanned images."
+            )
+
+        # --- Detect Old/New Status from heading ---
+        old_new = None
+        if re.search(r'renewal\s+student', full_text, re.IGNORECASE):
+            old_new = 'Renewal'
+        elif re.search(r'fresh\s+student', full_text, re.IGNORECASE):
+            old_new = 'New'
+
+        # --- Extract raw fields using flexible regex patterns ---
+        # Each pattern accounts for slight formatting variations across PDFs
+
+        raw_name = _extract_field(full_text,
+            r'(?:^|\n)\s*1\.?\s*Name\s*:\s*(.+)',
+            r'Name\s*:\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)+)')
+
+        raw_dob = _extract_field(full_text,
+            r'(?:^|\n)\s*3\.?\s*Date\s*of\s*Birth\s*:\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{4})',
+            r'Date\s*of\s*Birth\s*[:\-]\s*(\d{1,2}[/\-]\d{1,2}[/\-]\d{4})')
+
+        raw_mobile = _extract_field(full_text,
+            r'(?:^|\n)\s*5\.?\s*Mobile\s*No\s*:\s*(\d{10,12})',
+            r'Mobile\s*(?:No|Number)\s*[:\-]\s*(\d{10,12})')
+
+        raw_email = _extract_field(full_text,
+            r'(?:^|\n)\s*6\.?\s*Email\s*Address\s*:\s*([\w.+\-]+@[\w.]+\.[a-z]{2,})',
+            r'Email\s*(?:Address)?\s*[:\-]\s*([\w.+\-]+@[\w.]+\.[a-z]{2,})')
+
+        raw_address = _extract_field(full_text,
+            r'(?:^|\n)\s*7\.?\s*Residential\s*Address\s*:\s*(.+?)(?=\n\s*\d+\.)',
+            r'Residential\s*Address\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_income = _extract_field(full_text,
+            r'Family\s*Annual\s*Income\s*(?:\(In\s*Rs\.?\))?\s*[:\-]\s*([\d,]+)',
+            r'Annual\s*Income\s*[:\-]\s*([\d,]+)')
+
+        raw_college = _extract_field(full_text,
+            r'(?:^|\n)\s*10\.?\s*Further\s*Admission\s*in\s*College\s*:\s*(.+)',
+            r'Further\s*Admission\s*in\s*College\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_college_district = _extract_field(full_text,
+            r'(?:^|\n)\s*11\.?\s*Further\s*Admission\s*College\s*District\s*:\s*(.+)',
+            r'Admission\s*College\s*District\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_last_year = _extract_field(full_text,
+            r'(?:^|\n)\s*14\.?\s*Last\s*Year\s*/\s*Semester\s*:\s*(\d+)',
+            r'Last\s*Year\s*/\s*Semester\s*[:\-]\s*(\d+)')
+
+        raw_course = _extract_field(full_text,
+            r'(?:^|\n)\s*20\.?\s*Further\s*Course\s*Name\s*:\s*(.+)',
+            r'Further\s*Course\s*Name\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_admission_group = _extract_field(full_text,
+            r'(?:^|\n)\s*21\.?\s*Further\s*Admission\s*Group\s*:\s*(.+)',
+            r'Admission\s*Group\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_caste = _extract_field(full_text,
+            r'(?:^|\n)\s*23\.?\s*Caste\s*and\s*Sub\s*caste\s*:\s*(.+)',
+            r'Caste\s*and\s*Sub\s*caste\s*[:\-]\s*(.+?)(?=\n)',
+            r'Caste\s*[:\-]\s*(.+?)(?=\n)')
+
+        raw_percentage = _extract_field(full_text,
+            r'(?:^|\n)\s*24\.?\s*Result\s*of\s*Last\s*Exam\s*\(%\)\s*:\s*([\d.]+)',
+            r'Result\s*of\s*Last\s*Exam\s*[:\-]\s*([\d.]+)')
+
+        raw_gender = _extract_field(full_text,
+            r'(?:^|\n)\s*2\.?\s*Gender\s*:\s*(Male|Female|Other)',
+            r'Gender\s*[:\-]\s*(Male|Female|Other)')
+
+        # Boolean fields
+        is_disabled = _parse_bool_field(full_text,
+            r'Is\s*Disabled\s*:\s*(Yes|No)',
+            r'(?:^|\n)\s*15\.?\s*Is\s*Disabled\s*:\s*(Yes|No)')
+
+        is_orphan = _parse_bool_field(full_text,
+            r'Is\s*Orphan\s*:\s*(Yes|No)',
+            r'(?:^|\n)\s*19\.?\s*Is\s*Orphan\s*:\s*(Yes|No)')
+
+        is_widow_child = _parse_bool_field(full_text,
+            r'Is\s*Child\s*of\s*Widow\s*:\s*(Yes|No)',
+            r'(?:^|\n)\s*18\.?\s*Is\s*Child\s*of\s*Widow\s*:\s*(Yes|No)')
+
+        # --- Process / transform raw values ---
+
+        dob_converted = _convert_date(raw_dob)
+
+        # Current year = last year + 1
+        current_year = None
+        if raw_last_year:
+            try:
+                current_year = str(int(raw_last_year.strip()) + 1)
+            except ValueError:
+                current_year = None
+
+        # Address breakdown
+        addr = _parse_address(raw_address)
+
+        # Caste + Category split
+        caste_info = _parse_caste(raw_caste)
+
+        # Income — strip commas for clean storage
+        income_clean = raw_income.replace(',', '') if raw_income else None
+
+        # --- Build response ---
+        result = {
+            # Auto-filled fields
+            "full_name":             raw_name,
+            "dob":                   dob_converted,
+            "student_mobile_number": raw_mobile,
+            "email":                 raw_email,
+            "city":                  addr.get('city') or None,
+            "taluka":                addr.get('taluka') or None,
+            "district":              addr.get('district') or None,
+            "caste":                 caste_info.get('caste') or None,
+            "category":              caste_info.get('category') or None,
+            "college_name":          raw_college,
+            "current_year_of_study": current_year,
+            "percentage":            raw_percentage,
+            "parents_income":        income_clean,
+            "old_new":               old_new,
+            "disabled":              is_disabled,
+            "orphan":                is_orphan,
+            "father_is_deceased":    is_widow_child,
+            # Extra info (not form fields but useful for notes)
+            "gender":                raw_gender,
+            "course":                raw_course,
+            "admission_group":       raw_admission_group,
+            "last_year_semester":    raw_last_year,
+        }
+
+        # Strip empty strings to None so frontend can treat absent = None
+        result = {k: (v if v != '' else None) for k, v in result.items()}
+
+        return result
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"An unexpected error occurred while processing the PDF: {str(e)}"
+        )
 # --- Student Hostel API Routes ---
 @app.post("/students", response_model=StudentResponse, status_code=status.HTTP_201_CREATED)
 def create_student(student: StudentCreate, db: Session = Depends(get_db)):
     """
     Registers a new student profile in the database.
+    Checks if the student's mobile number already exists.
     """
+    if student.student_mobile_number:
+        existing_student = db.query(Student).filter(Student.student_mobile_number == student.student_mobile_number).first()
+        if existing_student:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Student already exists with this mobile number."
+            )
+            
     db_student = Student(**student.model_dump())
     db.add(db_student)
     db.commit()
@@ -467,34 +757,42 @@ def get_student_statistics(db: Session = Depends(get_db)):
 
 @app.get("/students/search", response_model=PaginatedStudentResponse)
 def search_students(
-    name: str | None = None, 
-    college: str | None = None, 
-    city: str | None = None, 
+    gr_number: str | None = None,
+    college: str | None = None,
+    mobile: str | None = None,
     page: int = 1,
     limit: int = 5,
     db: Session = Depends(get_db)
 ):
     """
-    Searches for students dynamically using Name, College Name, or City filters with pagination.
+    Searches for students dynamically using GR Number, College Name, or Mobile Number filters with pagination.
+    GR Number search matches against both new_gr and old_gr fields.
     """
+    from sqlalchemy import or_
+
     if page < 1:
         page = 1
     if limit < 1:
         limit = 5
-        
+
     query = db.query(Student)
-    
-    if name:
-        query = query.filter(Student.full_name.ilike(f"%{name}%"))
+
+    if gr_number:
+        query = query.filter(
+            or_(
+                Student.new_gr.ilike(f"%{gr_number}%"),
+                Student.old_gr.ilike(f"%{gr_number}%")
+            )
+        )
     if college:
         query = query.filter(Student.college_name.ilike(f"%{college}%"))
-    if city:
-        query = query.filter(Student.city.ilike(f"%{city}%"))
-        
+    if mobile:
+        query = query.filter(Student.student_mobile_number.ilike(f"%{mobile}%"))
+
     total = query.count()
     offset = (page - 1) * limit
     students = query.order_by(Student.id.desc()).offset(offset).limit(limit).all()
-    
+
     return {
         "students": students,
         "total": total,

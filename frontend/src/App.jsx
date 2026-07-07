@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key,
   LayoutDashboard, Users, Search, UserPlus, ShieldAlert, GraduationCap, MapPin, Inbox,
-  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X, Eye, EyeOff, Download
+  Info, Calendar, Phone, DollarSign, BookOpen, Layers, Award, Pencil, X, Eye, EyeOff, Download,
+  FileText, Upload, Trash2
 } from 'lucide-react';
 
 const API_URL = import.meta.env.VITE_API_URL;
@@ -10,6 +11,7 @@ const API_URL = import.meta.env.VITE_API_URL;
 function App() {
   const [view, setView] = useState('login'); // 'login' | 'forgot-password' | 'verify-otp' | 'dashboard'
   const [portalTab, setPortalTab] = useState('dashboard'); // 'dashboard' | 'students' | 'search' | 'register_student' | 'edit_student'
+  const [sessionExpired, setSessionExpired] = useState(false); // shown when 2h session auto-expires
 
   // Auth Form States
   const [loginEmail, setLoginEmail] = useState('');
@@ -69,10 +71,18 @@ function App() {
   const [specialNote, setSpecialNote] = useState('');
   const [dateOfLeavingTheHostel, setDateOfLeavingTheHostel] = useState('');
 
+  // PDF Upload States
+  const [pdfFile, setPdfFile] = useState(null);         // File object
+  const [pdfLoading, setPdfLoading] = useState(false);  // parsing in progress
+  const [pdfError, setPdfError] = useState('');         // error message
+  const [pdfSuccess, setPdfSuccess] = useState(false);  // parse succeeded
+  const [isDragOver, setIsDragOver] = useState(false);  // drag hover state
+  const pdfInputRef = useRef(null);                     // hidden file input ref
+
   // Student Search Filters State
-  const [searchName, setSearchName] = useState('');
+  const [searchGr, setSearchGr] = useState('');
   const [searchCollege, setSearchCollege] = useState('');
-  const [searchCity, setSearchCity] = useState('');
+  const [searchMobile, setSearchMobile] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searchPage, setSearchPage] = useState(1);
   const [searchTotalMatches, setSearchTotalMatches] = useState(0);
@@ -139,6 +149,50 @@ function App() {
       console.error("Error fetching stats:", err);
     }
   };
+
+  // ── Session persistence: restore from localStorage on first mount ──────────
+  useEffect(() => {
+    const stored = localStorage.getItem('samras_session');
+    if (stored) {
+      try {
+        const { user, expiry } = JSON.parse(stored);
+        if (user && expiry && Date.now() < expiry) {
+          // Valid session — restore without asking for login again
+          setCurrentUser(user);
+          setView('dashboard');
+          setPortalTab('dashboard');
+        } else {
+          // Session found but already expired
+          localStorage.removeItem('samras_session');
+          setSessionExpired(true);
+        }
+      } catch {
+        localStorage.removeItem('samras_session');
+      }
+    }
+  }, []); // runs once on mount
+
+  // ── Session expiry watcher: check every 30 seconds while app is open ──────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      const stored = localStorage.getItem('samras_session');
+      if (!stored) return;
+      try {
+        const { expiry } = JSON.parse(stored);
+        if (expiry && Date.now() >= expiry) {
+          // Session has expired — auto-logout
+          localStorage.removeItem('samras_session');
+          setCurrentUser(null);
+          setView('login');
+          setPortalTab('dashboard');
+          setSessionExpired(true);
+        }
+      } catch {
+        localStorage.removeItem('samras_session');
+      }
+    }, 30000); // every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   // Trigger data fetch when logged in
   useEffect(() => {
@@ -295,6 +349,11 @@ function App() {
         throw new Error(data.detail || "Invalid verification code.");
       }
 
+      // ── Persist session to localStorage with 2-hour expiry ────────────────
+      const expiry = Date.now() + 2 * 60 * 60 * 1000; // 2 hours from now
+      localStorage.setItem('samras_session', JSON.stringify({ user: data.user, expiry }));
+
+      setSessionExpired(false);
       setCurrentUser(data.user);
       setView('dashboard');
       setPortalTab('dashboard');
@@ -309,10 +368,116 @@ function App() {
 
   const handleLogout = () => {
     clearNotifications();
+    // ── Clear persisted session so refresh goes back to login ────────────────
+    localStorage.removeItem('samras_session');
+    setSessionExpired(false);
     setCurrentUser(null);
     setLoginEmail('');
     setLoginPassword('');
     setView('login');
+  };
+
+  // ----- PDF Parsing Handlers -----
+
+  // Apply parsed PDF data to form state; only sets fields that have a value
+  const applyPdfData = (data) => {
+    if (data.full_name)             setFullName(data.full_name);
+    if (data.dob)                   setDob(data.dob);
+    if (data.student_mobile_number) setStudentMobileNumber(data.student_mobile_number);
+    if (data.city)                  setCity(data.city);
+    if (data.taluka)                setTaluka(data.taluka);
+    if (data.district)              setDistrict(data.district);
+    if (data.caste)                 setCaste(data.caste);
+    if (data.category)              setCategory(data.category);
+    if (data.college_name)          setCollegeName(data.college_name);
+    if (data.current_year_of_study) setCurrentYearOfStudy(data.current_year_of_study);
+    if (data.percentage)            setPercentage(data.percentage);
+    if (data.parents_income)        setParentsIncome(data.parents_income);
+    if (data.old_new)               setOldNew(data.old_new);
+    // Boolean flags — always apply (false is a valid value)
+    setDisabled(Boolean(data.disabled));
+    setOrphan(Boolean(data.orphan));
+    setFatherIsDeceased(Boolean(data.father_is_deceased));
+  };
+
+  // Reset all PDF state and clear auto-filled fields
+  const clearPdf = () => {
+    setPdfFile(null);
+    setPdfError('');
+    setPdfSuccess(false);
+    setIsDragOver(false);
+    // Reset every auto-filled field back to empty
+    setFullName('');
+    setDob('');
+    setStudentMobileNumber('');
+    setCity('');
+    setTaluka('');
+    setDistrict('');
+    setCaste('');
+    setCategory('');
+    setCollegeName('');
+    setCurrentYearOfStudy('');
+    setPercentage('');
+    setParentsIncome('');
+    setOldNew('');
+    setDisabled(false);
+    setOrphan(false);
+    setFatherIsDeceased(false);
+    setSpecialNote('');
+  };
+
+  // Core upload handler — validates file, calls backend, applies results
+  const handlePdfUpload = async (file) => {
+    if (!file) return;
+    // Validate type
+    if (!file.name.toLowerCase().endsWith('.pdf') || file.type && !file.type.includes('pdf')) {
+      setPdfError('Invalid file type. Please upload a PDF file.');
+      setPdfFile(null);
+      setPdfSuccess(false);
+      return;
+    }
+    setPdfFile(file);
+    setPdfError('');
+    setPdfSuccess(false);
+    setPdfLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const response = await fetch(`${API_URL}/parse-pdf`, {
+        method: 'POST',
+        body: formData,
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to parse PDF.');
+      }
+      applyPdfData(data);
+      setPdfSuccess(true);
+    } catch (err) {
+      setPdfError(err.message || 'An error occurred while processing the PDF.');
+      setPdfSuccess(false);
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
+  // Drag-and-drop event handlers
+  const handleDragOver = (e) => { e.preventDefault(); setIsDragOver(true); };
+  const handleDragLeave = (e) => { e.preventDefault(); setIsDragOver(false); };
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const dropped = e.dataTransfer.files?.[0];
+    if (dropped) handlePdfUpload(dropped);
+  };
+  const handleZoneClick = () => {
+    if (!pdfFile && pdfInputRef.current) pdfInputRef.current.click();
+  };
+  const handleFileInputChange = (e) => {
+    const picked = e.target.files?.[0];
+    if (picked) handlePdfUpload(picked);
+    // Reset input so same file can be re-uploaded
+    e.target.value = '';
   };
 
   // Student Registration API Handler
@@ -391,12 +556,20 @@ function App() {
       setCurrDate(new Date().toISOString().split('T')[0]);
       setSpecialNote('');
       setDateOfLeavingTheHostel('');
+      // Reset PDF upload state too
+      setPdfFile(null);
+      setPdfError('');
+      setPdfSuccess(false);
 
       // Redirect to list and reset to first page
       setStudentsPage(1);
       setPortalTab('students');
     } catch (err) {
       setError(err.message);
+      if (err.message.toLowerCase().includes("already exists")) {
+        alert(err.message);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -406,9 +579,9 @@ function App() {
   const handleSearchSubmit = async (page = 1) => {
     try {
       const queryParams = new URLSearchParams();
-      if (searchName) queryParams.append('name', searchName);
+      if (searchGr) queryParams.append('gr_number', searchGr);
       if (searchCollege) queryParams.append('college', searchCollege);
-      if (searchCity) queryParams.append('city', searchCity);
+      if (searchMobile) queryParams.append('mobile', searchMobile);
       queryParams.append('page', page);
       queryParams.append('limit', STUDENTS_LIMIT);
 
@@ -440,12 +613,12 @@ function App() {
     } else {
       setSearchPage(1);
     }
-  }, [searchName, searchCollege, searchCity]);
+  }, [searchGr, searchCollege, searchMobile]);
 
   const clearSearchFilters = () => {
-    setSearchName('');
+    setSearchGr('');
     setSearchCollege('');
-    setSearchCity('');
+    setSearchMobile('');
     setSearchResults([]);
     setSearchPage(1);
     setSearchTotalMatches(0);
@@ -547,6 +720,10 @@ function App() {
       fetchStats();
     } catch (err) {
       setError(err.message);
+      if (err.message.toLowerCase().includes("already exists")) {
+        alert(err.message);
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
     }
@@ -597,6 +774,9 @@ function App() {
             <h1>Welcome Back</h1>
             <p className="subtitle">Sign in to initialize secure OTP verification</p>
 
+            {sessionExpired && !error && !success && (
+              <div className="alert alert-error"><AlertCircle size={18} /> <span>Your session has expired. Please sign in again.</span></div>
+            )}
             {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
             {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
 
@@ -1155,7 +1335,7 @@ function App() {
               <div>
                 <div className="page-header">
                   <h2 className="page-title">Search Students</h2>
-                  <p className="page-description">Find students by combining name, college, and city filters</p>
+                  <p className="page-description">Find students by combining GR number, college, and mobile filters</p>
                 </div>
 
                 {/* Filter Input Grid */}
@@ -1163,16 +1343,16 @@ function App() {
                   <form onSubmit={(e) => { e.preventDefault(); handleSearchSubmit(); }}>
                     <div className="search-grid">
                       <div className="search-field">
-                        <label htmlFor="search-name">Search Name</label>
+                        <label htmlFor="search-gr">GR Number</label>
                         <div className="search-input-wrapper">
                           <input
-                            id="search-name"
+                            id="search-gr"
                             type="text"
-                            placeholder="e.g. Rahul"
-                            value={searchName}
-                            onChange={(e) => setSearchName(e.target.value)}
+                            placeholder="e.g. NG-2024-001"
+                            value={searchGr}
+                            onChange={(e) => setSearchGr(e.target.value)}
                           />
-                          <User className="search-icon" size={16} />
+                          <Key className="search-icon" size={16} />
                         </div>
                       </div>
 
@@ -1191,16 +1371,16 @@ function App() {
                       </div>
 
                       <div className="search-field">
-                        <label htmlFor="search-city">Search City</label>
+                        <label htmlFor="search-mobile">Mobile Number</label>
                         <div className="search-input-wrapper">
                           <input
-                            id="search-city"
+                            id="search-mobile"
                             type="text"
-                            placeholder="e.g. Delhi"
-                            value={searchCity}
-                            onChange={(e) => setSearchCity(e.target.value)}
+                            placeholder="e.g. 9876543210"
+                            value={searchMobile}
+                            onChange={(e) => setSearchMobile(e.target.value)}
                           />
-                          <MapPin className="search-icon" size={16} />
+                          <Phone className="search-icon" size={16} />
                         </div>
                       </div>
 
@@ -1306,7 +1486,7 @@ function App() {
             {portalTab === 'register_student' && (
               <div>
                 <div className="page-header">
-                  <h2 className="page-title">Register New Student</h2>
+                  <h2 className="page-title">Register New <span style={{ color: 'var(--primary)' }}>Student</span></h2>
                   <p className="page-description">Fill out the student's personal, academic, and hostel details</p>
                 </div>
 
@@ -1314,14 +1494,140 @@ function App() {
 
                 <form onSubmit={handleRegisterStudent} style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
 
+                  {/* ── PDF Upload Section ─────────────────────────────── */}
+                  <div className="dashboard-widget" style={{ padding: '24px' }}>
+                    <h3 className="widget-title" style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-card)', paddingBottom: '10px', marginBottom: '16px' }}>
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        <FileText size={16} style={{ color: 'var(--primary)' }} />
+                        Auto-Fill from PDF Application
+                      </span>
+                    </h3>
+
+                    {/* Hidden file input */}
+                    <input
+                      ref={pdfInputRef}
+                      type="file"
+                      accept=".pdf,application/pdf"
+                      style={{ display: 'none' }}
+                      onChange={handleFileInputChange}
+                    />
+
+                    {/* Drop Zone */}
+                    <div
+                      className={[
+                        'pdf-upload-zone',
+                        isDragOver ? 'drag-over' : '',
+                        pdfSuccess ? 'has-file' : '',
+                        pdfError && !pdfLoading ? 'error-state' : '',
+                      ].filter(Boolean).join(' ')}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      onClick={pdfFile ? undefined : handleZoneClick}
+                    >
+                      {/* ─ Idle / Drag-over State ─ */}
+                      {!pdfLoading && !pdfFile && (
+                        <>
+                          <div className="pdf-upload-icon">
+                            <Upload size={24} />
+                          </div>
+                          <p className="pdf-upload-title">Drag &amp; Drop your PDF here</p>
+                          <p className="pdf-upload-subtitle">
+                            Upload the student's Samras application PDF to auto-fill all available fields.<br />
+                            <span style={{ color: 'var(--primary)', fontWeight: 600 }}>Click to browse</span> or drag the file.
+                          </p>
+                          {pdfError && <p className="pdf-upload-error"><AlertCircle size={14} style={{ display: 'inline', marginRight: 4 }} />{pdfError}</p>}
+                        </>
+                      )}
+
+                      {/* ─ Loading State ─ */}
+                      {pdfLoading && (
+                        <>
+                          <div className="pdf-spinner" />
+                          <p className="pdf-loading-text">Reading PDF and extracting student data…</p>
+                        </>
+                      )}
+
+                      {/* ─ Success State ─ */}
+                      {!pdfLoading && pdfFile && pdfSuccess && (
+                        <>
+                          <div className="pdf-upload-icon">
+                            <FileText size={24} />
+                          </div>
+                          <p className="pdf-upload-filename">
+                            <CheckCircle size={16} />
+                            {pdfFile.name}
+                          </p>
+                          <p className="pdf-upload-subtitle" style={{ color: 'var(--success)' }}>
+                            Student data extracted and form fields populated successfully.
+                          </p>
+                          <button
+                            type="button"
+                            className="pdf-remove-btn"
+                            onClick={(e) => { e.stopPropagation(); clearPdf(); }}
+                          >
+                            <Trash2 size={13} /> Remove PDF &amp; Reset Fields
+                          </button>
+                        </>
+                      )}
+
+                      {/* ─ Error after file selected ─ */}
+                      {!pdfLoading && pdfFile && !pdfSuccess && (
+                        <>
+                          <div className="pdf-upload-icon">
+                            <AlertCircle size={24} />
+                          </div>
+                          <p className="pdf-upload-filename" style={{ color: 'var(--error)' }}>
+                            {pdfFile.name}
+                          </p>
+                          <p className="pdf-upload-error">{pdfError}</p>
+                          <button
+                            type="button"
+                            className="pdf-remove-btn"
+                            onClick={(e) => { e.stopPropagation(); clearPdf(); }}
+                          >
+                            <Trash2 size={13} /> Clear &amp; Try Again
+                          </button>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Info note when PDF is loaded */}
+                    {pdfSuccess && (
+                      <div style={{
+                        marginTop: '14px',
+                        padding: '12px 16px',
+                        background: 'rgba(251, 146, 60, 0.08)',
+                        border: '1px solid rgba(251, 146, 60, 0.25)',
+                        borderRadius: '10px',
+                        fontSize: '0.83rem',
+                        color: '#fb923c',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '10px',
+                        lineHeight: 1.5,
+                      }}>
+                        <AlertCircle size={15} style={{ flexShrink: 0, marginTop: '1px' }} />
+                        <span>
+                          Fields highlighted in <strong style={{ color: '#fb923c' }}>amber</strong> require manual entry — they are not present in the uploaded PDF.
+                          All auto-filled values can be freely edited before submitting.
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Category 1: G.R. Info */}
                   <div className="dashboard-widget" style={{ padding: '24px' }}>
                     <h3 className="widget-title" style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-card)', paddingBottom: '10px' }}>
                       General Register (G.R.) Details
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
-                      <div className="form-group">
-                        <label htmlFor="std-newgr">NEW G.R. Number</label>
+                      {/* NEW GR — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-newgr" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          NEW G.R. Number
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-newgr"
                           type="text"
@@ -1332,8 +1638,12 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="std-oldgr">OLD G.R. Number</label>
+                      {/* OLD GR — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-oldgr" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          OLD G.R. Number
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-oldgr"
                           type="text"
@@ -1344,7 +1654,8 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
+                      {/* Old/New Status — auto-filled */}
+                      <div className={`form-group ${pdfSuccess && oldNew ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-oldnew">Old / New Status</label>
                         <input
                           id="std-oldnew"
@@ -1365,7 +1676,7 @@ function App() {
                       Personal & Contact Details
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && fullName ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-name">Full Name</label>
                         <input
                           id="std-name"
@@ -1376,18 +1687,17 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && dob ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-dob">Date of Birth</label>
                         <input
                           id="std-dob"
                           type="date"
-                          placeholder="e.g. 15-08-2005"
                           value={dob}
                           onChange={(e) => setDob(e.target.value)}
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && studentMobileNumber ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-phone">Student Mobile Number</label>
                         <input
                           id="std-phone"
@@ -1398,8 +1708,12 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="std-pphone">Parents Mobile Number</label>
+                      {/* Parents Mobile — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-pphone" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          Parents Mobile Number
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-pphone"
                           type="text"
@@ -1418,7 +1732,7 @@ function App() {
                       Address & Caste Demographics
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && city ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-city">City / Village</label>
                         <input
                           id="std-city"
@@ -1429,7 +1743,7 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && taluka ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-taluka">Taluka</label>
                         <input
                           id="std-taluka"
@@ -1441,7 +1755,7 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && district ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-district">District</label>
                         <input
                           id="std-district"
@@ -1453,7 +1767,7 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <div className={`form-group ${pdfSuccess && caste ? 'pdf-autofilled' : ''}`} style={{ gridColumn: 'span 2' }}>
                         <label htmlFor="std-caste">Caste</label>
                         <input
                           id="std-caste"
@@ -1465,7 +1779,7 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && category ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-category">Category</label>
                         <input
                           id="std-category"
@@ -1486,7 +1800,7 @@ function App() {
                       Academic Information
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', marginTop: '16px' }}>
-                      <div className="form-group" style={{ gridColumn: 'span 2' }}>
+                      <div className={`form-group ${pdfSuccess && collegeName ? 'pdf-autofilled' : ''}`} style={{ gridColumn: 'span 2' }}>
                         <label htmlFor="std-college">College Name</label>
                         <input
                           id="std-college"
@@ -1497,19 +1811,23 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && currentYearOfStudy ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-year">Current Year of Study</label>
                         <input
                           id="std-year"
                           type="text"
-                          placeholder="e.g. SY B.Sc"
+                          placeholder="e.g. 3"
                           value={currentYearOfStudy}
                           onChange={(e) => setCurrentYearOfStudy(e.target.value)}
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="std-lastexam">Last Exam Taken</label>
+                      {/* Last Exam — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-lastexam" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          Last Exam Taken
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-lastexam"
                           type="text"
@@ -1519,8 +1837,12 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="std-lastexamyr">Last Exam Year</label>
+                      {/* Last Exam Year — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-lastexamyr" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          Last Exam Year
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-lastexamyr"
                           type="text"
@@ -1530,7 +1852,7 @@ function App() {
                           required
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && percentage ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-percentage">Percentage Obtained</label>
                         <input
                           id="std-percentage"
@@ -1550,8 +1872,12 @@ function App() {
                       Hostel Placement & Income Details
                     </h3>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '16px', marginTop: '16px' }}>
-                      <div className="form-group">
-                        <label htmlFor="std-block">Block</label>
+                      {/* Block — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-block" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          Block
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-block"
                           type="text"
@@ -1562,8 +1888,12 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
-                        <label htmlFor="std-room">Room Number</label>
+                      {/* Room Number — manual required */}
+                      <div className={`form-group ${pdfSuccess ? 'pdf-manual-highlight' : ''}`}>
+                        <label htmlFor="std-room" className={pdfSuccess ? 'pdf-manual-label' : ''}>
+                          Room Number
+                          {pdfSuccess && <span className="pdf-manual-badge">Manual</span>}
+                        </label>
                         <input
                           id="std-room"
                           type="text"
@@ -1574,7 +1904,7 @@ function App() {
                           style={{ paddingLeft: '16px' }}
                         />
                       </div>
-                      <div className="form-group">
+                      <div className={`form-group ${pdfSuccess && parentsIncome ? 'pdf-autofilled' : ''}`}>
                         <label htmlFor="std-income">Parents Annual Income</label>
                         <input
                           id="std-income"

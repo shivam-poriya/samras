@@ -1151,3 +1151,182 @@ tbody tr:hover {
   .modal-grid-2, .modal-grid-3 { grid-template-columns: 1fr; }
   .student-modal-footer { flex-direction: column-reverse; }
 }
+
+/* ===== PDF Upload Zone ===== */
+
+.pdf-upload-zone {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 36px 24px;
+  border: 2px dashed var(--border-card);
+  border-radius: 16px;
+  background: rgba(139, 92, 246, 0.03);
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  text-align: center;
+  min-height: 160px;
+  user-select: none;
+}
+
+.pdf-upload-zone:hover {
+  border-color: var(--primary);
+  background: rgba(139, 92, 246, 0.07);
+  box-shadow: 0 0 0 4px var(--primary-glow);
+}
+
+.pdf-upload-zone.drag-over {
+  border-color: var(--primary);
+  background: rgba(139, 92, 246, 0.12);
+  box-shadow: 0 0 0 6px var(--primary-glow);
+  transform: scale(1.01);
+}
+
+.pdf-upload-zone.has-file {
+  border-color: var(--success);
+  background: rgba(16, 185, 129, 0.05);
+  cursor: default;
+}
+
+.pdf-upload-zone.error-state {
+  border-color: var(--error);
+  background: rgba(244, 63, 94, 0.05);
+}
+
+.pdf-upload-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(139, 92, 246, 0.15);
+  color: var(--primary);
+  flex-shrink: 0;
+  transition: var(--transition-smooth);
+}
+
+.pdf-upload-zone.has-file .pdf-upload-icon {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success);
+}
+
+.pdf-upload-zone.error-state .pdf-upload-icon {
+  background: rgba(244, 63, 94, 0.15);
+  color: var(--error);
+}
+
+.pdf-upload-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.pdf-upload-subtitle {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin: 0;
+  line-height: 1.5;
+}
+
+.pdf-upload-filename {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--success);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pdf-upload-error {
+  font-size: 0.88rem;
+  color: var(--error);
+  font-weight: 500;
+}
+
+/* Remove PDF button */
+.pdf-remove-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(244, 63, 94, 0.08);
+  color: #f87171;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+  margin-top: 4px;
+  width: auto !important;
+}
+
+.pdf-remove-btn:hover {
+  background: rgba(244, 63, 94, 0.18);
+  border-color: rgba(244, 63, 94, 0.6);
+  transform: none;
+  box-shadow: none;
+}
+
+/* Loading spinner for PDF processing */
+.pdf-spinner {
+  width: 28px;
+  height: 28px;
+  border: 3px solid rgba(139, 92, 246, 0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.75s linear infinite;
+  flex-shrink: 0;
+}
+
+.pdf-loading-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-secondary);
+}
+
+/* Manual-required field highlight after PDF upload */
+/* Subtle amber-toned ring — does NOT use harsh red, matches existing UX */
+.pdf-manual-highlight input,
+.pdf-manual-highlight textarea {
+  border-color: rgba(251, 146, 60, 0.55) !important;
+  box-shadow: 0 0 0 3px rgba(251, 146, 60, 0.12) !important;
+}
+
+.pdf-manual-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.pdf-manual-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  background: rgba(251, 146, 60, 0.15);
+  color: #fb923c;
+  border: 1px solid rgba(251, 146, 60, 0.3);
+}
+
+/* Auto-filled field glow (success) */
+.pdf-autofilled input {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.03) !important;
+}
