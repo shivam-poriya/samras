@@ -800,6 +800,24 @@ def search_students(
         "limit": limit
     }
 
+@app.get("/students/by-gr/{gr_number}", response_model=StudentResponse)
+def get_student_by_gr(gr_number: str, db: Session = Depends(get_db)):
+    """
+    Retrieves a single student profile by their GR number (checks new_gr then old_gr).
+    """
+    # First check new_gr
+    student = db.query(Student).filter(Student.new_gr == gr_number).first()
+    # If not found, fallback to old_gr
+    if not student:
+        student = db.query(Student).filter(Student.old_gr == gr_number).first()
+        
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with GR Number {gr_number} not found."
+        )
+    return student
+
 @app.get("/students/{student_id}", response_model=StudentResponse)
 def get_student_by_id(student_id: int, db: Session = Depends(get_db)):
     """

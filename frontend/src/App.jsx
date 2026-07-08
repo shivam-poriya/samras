@@ -90,8 +90,8 @@ function App() {
   // Student Detail Modal State
   const [selectedStudent, setSelectedStudent] = useState(null);
   // Edit Student State
-  const [editStudentId, setEditStudentId] = useState(null);
-  const [editStudentIdInput, setEditStudentIdInput] = useState('');
+  const [editStudentId, setEditStudentId] = useState(null); // Keep ID for backend PUT
+  const [editStudentGrInput, setEditStudentGrInput] = useState('');
   const [editStudent, setEditStudent] = useState(null);
   const [editLoading, setEditLoading] = useState(false);
   // Edit form fields mirror register fields
@@ -624,17 +624,18 @@ function App() {
     setSearchTotalMatches(0);
   };
 
-  // Load a student by ID and populate the edit form
-  const fetchStudentById = async (id) => {
-    if (!id) return;
+  // Load a student by GR number and populate the edit form
+  const fetchStudentByGr = async (gr) => {
+    if (!gr) return;
     setEditLoading(true);
     setError('');
     try {
-      const response = await fetch(`${API_URL}/students/${id}`);
+      const response = await fetch(`${API_URL}/students/by-gr/${gr}`);
       const data = await response.json();
       if (!response.ok) {
-        throw new Error(data.detail || `Student #${id} not found.`);
+        throw new Error(data.detail || `Student with GR #${gr} not found.`);
       }
+      setEditStudentId(data.id); // Save the actual database ID for updating later
       setEditStudent(data);
       setEditNewGr(data.new_gr || '');
       setEditOldGr(data.old_gr || '');
@@ -1203,7 +1204,7 @@ function App() {
                     </div>
 
                     <div className="action-card" onClick={handleExportPdf}>
-                      <div className="action-icon" style={{ background: 'linear-gradient(135deg,#dc2626,#b91c1c)' }}>
+                      <div className="action-icon" style={{ background: 'rgba(220, 38, 38, 0.1)', color: '#dc2626' }}>
                         <Download size={20} />
                       </div>
                       <span className="action-title">Export to PDF</span>
@@ -1211,7 +1212,7 @@ function App() {
                     </div>
 
                     <div className="action-card" onClick={handleExportExcel}>
-                      <div className="action-icon" style={{ background: 'linear-gradient(135deg,#16a34a,#15803d)' }}>
+                      <div className="action-icon" style={{ background: 'rgba(22, 163, 74, 0.1)', color: '#16a34a' }}>
                         <Download size={20} />
                       </div>
                       <span className="action-title">Export to Excel</span>
@@ -2019,51 +2020,51 @@ function App() {
               <div>
                 <div className="page-header">
                   <h2 className="page-title">Edit Student Details</h2>
-                  <p className="page-description">Search for a student by their ID, then update their information</p>
+                  <p className="page-description">Search for a student by their GR Number, then update their information</p>
                 </div>
 
                 {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
                 {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
 
-                {/* Step 1: ID Lookup */}
+                {/* Step 1: GR Lookup */}
                 <div className="dashboard-widget" style={{ padding: '24px', marginBottom: '24px' }}>
                   <h3 className="widget-title" style={{ fontSize: '1rem', borderBottom: '1px solid var(--border-card)', paddingBottom: '10px' }}>
-                    Step 1 — Find Student by ID
+                    Step 1 — Find Student by GR Number
                   </h3>
                   <div style={{ display: 'flex', gap: '16px', alignItems: 'flex-end', marginTop: '16px' }}>
                     <div className="form-group" style={{ marginBottom: 0, flexGrow: 1 }}>
-                      <label htmlFor="edit-student-id">Student ID</label>
+                      <label htmlFor="edit-student-gr">Student GR Number</label>
                       <input
-                        id="edit-student-id"
-                        type="number"
-                        placeholder="Enter student ID (e.g. 1, 2, 3...)"
-                        value={editStudentIdInput}
-                        onChange={(e) => setEditStudentIdInput(e.target.value)}
-                        onKeyDown={(e) => { if (e.key === 'Enter') { setEditStudentId(editStudentIdInput); fetchStudentById(editStudentIdInput); } }}
+                        id="edit-student-gr"
+                        type="text"
+                        placeholder="Enter student GR Number (e.g. GR-2023-001)"
+                        value={editStudentGrInput}
+                        onChange={(e) => setEditStudentGrInput(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') { fetchStudentByGr(editStudentGrInput); } }}
                       />
                     </div>
                     <button
                       type="button"
-                      disabled={editLoading || !editStudentIdInput}
+                      disabled={editLoading || !editStudentGrInput}
                       style={{
                         width: 'auto',
                         padding: '14px 28px',
                         fontSize: '1rem',
                         fontWeight: '600',
-                        background: editLoading || !editStudentIdInput
+                        background: editLoading || !editStudentGrInput
                           ? 'rgba(139,92,246,0.35)'
                           : 'linear-gradient(135deg, #8b5cf6, #a78bfa)',
                         color: '#ffffff',
                         border: 'none',
                         borderRadius: '12px',
-                        cursor: editLoading || !editStudentIdInput ? 'not-allowed' : 'pointer',
+                        cursor: editLoading || !editStudentGrInput ? 'not-allowed' : 'pointer',
                         boxShadow: '0 4px 12px rgba(139,92,246,0.3)',
                         transition: 'all 0.25s ease',
                         flexShrink: 0,
                       }}
-                      onMouseEnter={e => { if (!editLoading && editStudentIdInput) { e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed, #b59dfb)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.45)'; } }}
+                      onMouseEnter={e => { if (!editLoading && editStudentGrInput) { e.currentTarget.style.background = 'linear-gradient(135deg, #7c3aed, #b59dfb)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 6px 20px rgba(139,92,246,0.45)'; } }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'linear-gradient(135deg, #8b5cf6, #a78bfa)'; e.currentTarget.style.transform = 'translateY(0)'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.3)'; }}
-                      onClick={() => { setEditStudentId(editStudentIdInput); fetchStudentById(editStudentIdInput); }}
+                      onClick={() => { fetchStudentByGr(editStudentGrInput); }}
                     >
                       {editLoading ? 'Loading...' : 'Load Student'}
                     </button>

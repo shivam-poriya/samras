@@ -1,30 +1,34 @@
 /* Import Modern Google Font */
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-  --font-family: 'Outfit', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   
-  /* Color Palette */
-  --bg-primary: #0a0813;
-  --bg-secondary: rgba(18, 16, 32, 0.6);
-  --bg-card: rgba(255, 255, 255, 0.02);
-  --border-card: rgba(255, 255, 255, 0.08);
+  /* Color Palette - Formal Government Light Theme */
+  --bg-primary: #F3F4F6;
+  --bg-secondary: #FFFFFF;
+  --bg-card: #FFFFFF;
+  --border-card: #E5E7EB;
   
-  --primary: #8b5cf6;
-  --primary-hover: #7c3aed;
-  --primary-glow: rgba(139, 92, 246, 0.35);
+  --primary: #EA580C; /* Saffron/Orange */
+  --primary-hover: #C2410C;
+  --primary-glow: rgba(234, 88, 12, 0.15); /* Subtle shadow, not glow */
   
-  --success: #10b981;
-  --success-glow: rgba(16, 185, 129, 0.2);
-  --error: #f43f5e;
-  --error-glow: rgba(244, 63, 94, 0.2);
+  --sidebar-bg: #0F4C81; /* Deep Navy Blue */
+  --sidebar-text: #FFFFFF;
+  --sidebar-hover: rgba(255, 255, 255, 0.1);
+
+  --success: #16A34A;
+  --success-glow: rgba(22, 163, 74, 0.1);
+  --error: #DC2626;
+  --error-glow: rgba(220, 38, 38, 0.1);
   
-  --text-primary: #f8fafc;
-  --text-secondary: #94a3b8;
-  --text-muted: #64748b;
+  --text-primary: #1F2937;
+  --text-secondary: #4B5563;
+  --text-muted: #9CA3AF;
   
   --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  --shadow-premium: 0 20px 40px -15px rgba(0, 0, 0, 0.7);
+  --shadow-premium: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
 }
 
 /* Reset and Global Styles */
@@ -40,17 +44,13 @@ body {
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
-    radial-gradient(circle at 90% 80%, rgba(59, 130, 246, 0.12) 0%, transparent 45%);
-  background-attachment: fixed;
 }
 
 /* Global Form Elements Styling */
 input, textarea, select {
   width: 100%;
   padding: 14px 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--bg-secondary);
   border: 1.5px solid var(--border-card);
   border-radius: 12px;
   color: var(--text-primary);
@@ -62,7 +62,7 @@ input, textarea, select {
 
 input:focus, textarea:focus, select:focus {
   border-color: var(--primary);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--bg-secondary);
   box-shadow: 0 0 0 4px var(--primary-glow);
 }
 
@@ -86,21 +86,21 @@ form button[type="button"],
 .empty-state button {
   width: 100%;
   padding: 16px 24px;
-  background: linear-gradient(135deg, var(--primary), #a78bfa);
-  border-radius: 12px;
+  background: var(--primary);
+  border-radius: 8px; /* Slightly sharper corners for formal look */
   color: #ffffff;
-  font-size: 1.15rem; /* Larger font size */
+  font-size: 1.05rem;
   font-weight: 600;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.25);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .auth-container button:hover:not(:disabled),
 form button[type="submit"]:hover:not(:disabled),
 form button[type="button"]:hover:not(:disabled),
 .empty-state button:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(139, 92, 246, 0.4);
-  background: linear-gradient(135deg, var(--primary-hover), #b59dfb);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+  background: var(--primary-hover);
 }
 
 .auth-container button:active:not(:disabled),
@@ -222,10 +222,8 @@ form button[type="button"]:disabled,
   width: 100%;
   max-width: 460px;
   background: var(--bg-secondary);
-  backdrop-filter: blur(24px);
-  -webkit-backdrop-filter: blur(24px);
   border: 1px solid var(--border-card);
-  border-radius: 24px;
+  border-radius: 12px;
   padding: 44px 40px;
   box-shadow: var(--shadow-premium);
   transition: var(--transition-smooth);
@@ -239,9 +237,7 @@ form button[type="button"]:disabled,
   font-weight: 800;
   margin-bottom: 8px;
   text-align: center;
-  background: linear-gradient(135deg, #ffffff 30%, #c084fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--sidebar-bg);
   letter-spacing: -0.5px;
 }
 
@@ -254,8 +250,8 @@ form button[type="button"]:disabled,
 }
 
 .auth-container:hover {
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow: 0 25px 50px -12px rgba(139, 92, 246, 0.15);
+  border-color: var(--primary);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
 }
 
 .auth-switch {
@@ -307,9 +303,8 @@ form button[type="button"]:disabled,
 /* Sidebar Styling (Matches reference GitRAG dashboard style) */
 .sidebar {
   width: 260px;
-  background: rgba(11, 9, 21, 0.95);
+  background: var(--sidebar-bg);
   border-right: 1px solid var(--border-card);
-  backdrop-filter: blur(15px);
   display: flex;
   flex-direction: column;
   justify-content: space-between;
@@ -318,6 +313,7 @@ form button[type="button"]:disabled,
   position: fixed;
   z-index: 100;
   transition: var(--transition-smooth);
+  color: var(--sidebar-text);
 }
 
 .brand-section {
@@ -331,31 +327,29 @@ form button[type="button"]:disabled,
 .brand-logo {
   width: 36px;
   height: 36px;
-  background: linear-gradient(135deg, var(--primary), #3b82f6);
-  border-radius: 10px;
+  background: var(--primary);
+  border-radius: 8px;
   display: flex;
   justify-content: center;
   align-items: center;
   font-weight: 800;
   font-size: 1.2rem;
   color: white;
-  box-shadow: 0 4px 12px rgba(139, 92, 246, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 }
 
 .brand-name {
   font-weight: 700;
   font-size: 1.25rem;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ffffff 40%, #a78bfa 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: #FFFFFF;
 }
 
 .nav-section-title {
   font-size: 0.75rem;
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--text-muted);
+  color: rgba(255, 255, 255, 0.6);
   letter-spacing: 1.5px;
   margin: 16px 12px 12px 12px;
 }
@@ -371,30 +365,30 @@ form button[type="button"]:disabled,
   align-items: center;
   gap: 12px;
   padding: 12px 16px;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.8);
   text-decoration: none;
   font-size: 0.95rem;
   font-weight: 500;
-  border-radius: 12px;
+  border-radius: 8px;
   cursor: pointer;
   transition: var(--transition-smooth);
   border: 1px solid transparent;
 }
 
 .nav-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+  color: #FFFFFF;
 }
 
 .nav-item.active {
-  background: rgba(139, 92, 246, 0.08);
-  border-color: rgba(139, 92, 246, 0.15);
-  color: var(--primary);
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.3);
+  color: #FFFFFF;
+  font-weight: 600;
 }
 
 .nav-item.active .nav-icon {
-  color: var(--primary);
-  filter: drop-shadow(0 0 6px rgba(139, 92, 246, 0.5));
+  color: #FFFFFF;
 }
 
 .nav-icon {
@@ -411,9 +405,9 @@ form button[type="button"]:disabled,
   align-items: center;
   gap: 12px;
   padding: 12px;
-  background: rgba(255, 255, 255, 0.02);
-  border-radius: 16px;
-  border: 1px solid var(--border-card);
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   margin-bottom: 12px;
 }
 
@@ -421,7 +415,7 @@ form button[type="button"]:disabled,
   width: 40px;
   height: 40px;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  background: var(--primary);
   display: flex;
   justify-content: center;
   align-items: center;
@@ -440,7 +434,7 @@ form button[type="button"]:disabled,
 .user-name {
   font-size: 0.85rem;
   font-weight: 600;
-  color: var(--text-primary);
+  color: #FFFFFF;
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -448,7 +442,7 @@ form button[type="button"]:disabled,
 
 .user-email {
   font-size: 0.75rem;
-  color: var(--text-secondary);
+  color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
   text-overflow: ellipsis;
   overflow: hidden;
@@ -482,9 +476,7 @@ form button[type="button"]:disabled,
   font-size: 2rem;
   font-weight: 700;
   letter-spacing: -0.5px;
-  background: linear-gradient(135deg, #ffffff 40%, #c084fc 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--sidebar-bg);
 }
 
 .page-description {
@@ -504,7 +496,7 @@ form button[type="button"]:disabled,
 .kpi-card {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 24px;
   display: flex;
   justify-content: space-between;
@@ -557,33 +549,28 @@ form button[type="button"]:disabled,
 }
 
 .kpi-icon-wrapper.blue {
-  background: rgba(59, 130, 246, 0.1);
-  color: #3b82f6;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  box-shadow: 0 0 15px rgba(59, 130, 246, 0.15);
+  background: rgba(15, 76, 129, 0.1);
+  color: var(--sidebar-bg);
 }
 
 .kpi-icon-wrapper.purple {
-  background: rgba(139, 92, 246, 0.1);
+  background: rgba(234, 88, 12, 0.1);
   color: var(--primary);
-  border: 1px solid rgba(139, 92, 246, 0.2);
-  box-shadow: 0 0 15px rgba(139, 92, 246, 0.15);
 }
 
 .kpi-icon-wrapper.orange {
-  background: rgba(245, 158, 11, 0.1);
-  color: #f59e0b;
-  border: 1px solid rgba(245, 158, 11, 0.2);
-  box-shadow: 0 0 15px rgba(245, 158, 11, 0.15);
+  background: rgba(22, 163, 74, 0.1);
+  color: var(--success);
 }
 
 /* Quick Actions and Widgets */
 .dashboard-widget {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 32px;
   margin-bottom: 24px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 .widget-title {
@@ -600,9 +587,9 @@ form button[type="button"]:disabled,
 }
 
 .action-card {
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--bg-secondary);
   border: 1px solid var(--border-card);
-  border-radius: 16px;
+  border-radius: 12px;
   padding: 24px;
   text-align: center;
   cursor: pointer;
@@ -611,19 +598,21 @@ form button[type="button"]:disabled,
   flex-direction: column;
   align-items: center;
   gap: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
 .action-card:hover {
-  background: rgba(255, 255, 255, 0.03);
-  border-color: rgba(139, 92, 246, 0.3);
+  background: #F8FAFC;
+  border-color: var(--primary);
   transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .action-icon {
   width: 48px;
   height: 48px;
-  background: rgba(139, 92, 246, 0.08);
-  border-radius: 12px;
+  background: rgba(234, 88, 12, 0.1);
+  border-radius: 8px;
   color: var(--primary);
   display: flex;
   justify-content: center;
@@ -645,9 +634,10 @@ form button[type="button"]:disabled,
 .student-table-container {
   width: 100%;
   overflow-x: auto;
-  border-radius: 16px;
+  border-radius: 12px;
   border: 1px solid var(--border-card);
-  background: rgba(255, 255, 255, 0.01);
+  background: var(--bg-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .student-table {
@@ -660,9 +650,9 @@ form button[type="button"]:disabled,
 .student-table th {
   padding: 16px 20px;
   font-weight: 600;
-  color: var(--text-secondary);
-  border-bottom: 1px solid var(--border-card);
-  background: rgba(255, 255, 255, 0.01);
+  color: var(--text-primary);
+  border-bottom: 2px solid var(--border-card);
+  background: #F8FAFC;
   text-transform: uppercase;
   font-size: 0.75rem;
   letter-spacing: 0.5px;
@@ -670,7 +660,7 @@ form button[type="button"]:disabled,
 
 .student-table td {
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid var(--border-card);
   color: var(--text-primary);
   vertical-align: middle;
 }
@@ -680,7 +670,7 @@ form button[type="button"]:disabled,
 }
 
 .student-table tr:hover td {
-  background: rgba(255, 255, 255, 0.02);
+  background: #F8FAFC;
 }
 
 .status-badge {
@@ -709,9 +699,10 @@ form button[type="button"]:disabled,
 .search-filter-panel {
   background: var(--bg-card);
   border: 1px solid var(--border-card);
-  border-radius: 20px;
+  border-radius: 12px;
   padding: 24px;
   margin-bottom: 32px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
 }
 
 .search-grid {
@@ -757,23 +748,23 @@ form button[type="button"]:disabled,
 .btn-search {
   height: 40px;
   padding: 0 24px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 0.9rem;
-  background: linear-gradient(135deg, var(--primary), #a78bfa);
+  background: var(--primary);
 }
 
 .btn-clear {
   height: 40px;
   padding: 0 16px;
-  border-radius: 12px;
+  border-radius: 8px;
   font-size: 0.9rem;
-  background: rgba(255, 255, 255, 0.05);
+  background: #F1F5F9;
   border: 1px solid var(--border-card);
   color: var(--text-secondary);
 }
 
 .btn-clear:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: #E2E8F0;
   color: var(--text-primary);
 }
 
@@ -988,9 +979,7 @@ form button[type="button"]:disabled,
 .student-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.65);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1005,13 +994,10 @@ form button[type="button"]:disabled,
 }
 
 .student-modal {
-  background: linear-gradient(145deg, rgba(22, 15, 45, 0.97), rgba(15, 10, 30, 0.98));
-  border: 1px solid rgba(139, 92, 246, 0.25);
-  border-radius: 20px;
-  box-shadow:
-    0 0 0 1px rgba(255,255,255,0.04),
-    0 24px 60px rgba(0, 0, 0, 0.6),
-    0 0 80px rgba(139, 92, 246, 0.08);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
   width: 100%;
   max-width: 780px;
   max-height: 88vh;
@@ -1032,7 +1018,7 @@ form button[type="button"]:disabled,
   justify-content: space-between;
   gap: 16px;
   padding: 24px 28px 20px;
-  border-bottom: 1px solid rgba(255,255,255,0.06);
+  border-bottom: 1px solid var(--border-card);
   flex-shrink: 0;
 }
 
@@ -1044,14 +1030,14 @@ form button[type="button"]:disabled,
   flex-direction: column;
   gap: 20px;
   scrollbar-width: thin;
-  scrollbar-color: rgba(139,92,246,0.3) transparent;
+  scrollbar-color: var(--border-card) transparent;
 }
 
 .student-modal-body::-webkit-scrollbar {
   width: 5px;
 }
 .student-modal-body::-webkit-scrollbar-thumb {
-  background: rgba(139,92,246,0.35);
+  background: var(--border-card);
   border-radius: 4px;
 }
 
@@ -1060,20 +1046,20 @@ form button[type="button"]:disabled,
   gap: 12px;
   justify-content: flex-end;
   padding: 16px 28px 22px;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid var(--border-card);
   flex-shrink: 0;
 }
 
 /* Table row hover highlight */
 tbody tr:hover {
-  background: rgba(139, 92, 246, 0.07) !important;
+  background: #F8FAFC !important;
 }
 
 /* Modal sections */
 .modal-section {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  border-radius: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border-card);
+  border-radius: 8px;
   padding: 16px 18px;
 }
 
@@ -1102,9 +1088,9 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 3px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.05);
-  border-radius: 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-card);
+  border-radius: 6px;
   padding: 10px 14px;
 }
 
@@ -1163,8 +1149,8 @@ tbody tr:hover {
   gap: 12px;
   padding: 36px 24px;
   border: 2px dashed var(--border-card);
-  border-radius: 16px;
-  background: rgba(139, 92, 246, 0.03);
+  border-radius: 8px;
+  background: var(--bg-card);
   cursor: pointer;
   transition: var(--transition-smooth);
   text-align: center;
@@ -1174,15 +1160,15 @@ tbody tr:hover {
 
 .pdf-upload-zone:hover {
   border-color: var(--primary);
-  background: rgba(139, 92, 246, 0.07);
-  box-shadow: 0 0 0 4px var(--primary-glow);
+  background: #F8FAFC;
+  box-shadow: none;
 }
 
 .pdf-upload-zone.drag-over {
   border-color: var(--primary);
-  background: rgba(139, 92, 246, 0.12);
-  box-shadow: 0 0 0 6px var(--primary-glow);
-  transform: scale(1.01);
+  background: #F1F5F9;
+  box-shadow: none;
+  transform: none;
 }
 
 .pdf-upload-zone.has-file {
@@ -1203,7 +1189,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(139, 92, 246, 0.15);
+  background: rgba(234, 88, 12, 0.1);
   color: var(--primary);
   flex-shrink: 0;
   transition: var(--transition-smooth);
@@ -1277,7 +1263,7 @@ tbody tr:hover {
 .pdf-spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(139, 92, 246, 0.2);
+  border: 3px solid rgba(234, 88, 12, 0.2);
   border-top-color: var(--primary);
   border-radius: 50%;
   animation: spin 0.75s linear infinite;
