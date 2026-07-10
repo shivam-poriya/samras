@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import Swal from 'sweetalert2';
 import {
   Mail, Lock, User, AlertCircle, CheckCircle, ArrowRight, LogOut, Key,
   LayoutDashboard, Users, Search, UserPlus, ShieldAlert, GraduationCap, MapPin, Inbox,
@@ -716,9 +717,34 @@ function App() {
       if (!response.ok) {
         throw new Error(data.detail || 'Failed to update student.');
       }
-      setSuccess(`Student "${data.full_name}" updated successfully!`);
+      // setSuccess(`Student "${data.full_name}" updated successfully!`);
+      setSuccess('');
       setEditStudent(data);
       fetchStats();
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      
+      Swal.fire({
+        title: 'Updated Successfully!',
+        html: `Student <b>${data.full_name}</b>'s profile has been updated.`,
+        icon: 'success',
+        confirmButtonText: 'Awesome!',
+        confirmButtonColor: '#EA580C',
+        background: '#FFFFFF',
+        color: '#1F2937',
+        customClass: {
+          popup: 'rounded-xl border border-gray-200 shadow-lg',
+          title: 'text-xl font-bold',
+          confirmButton: 'rounded-lg px-6 py-2.5 font-semibold transition-all hover:scale-105'
+        }
+      }).then((result) => {
+        if (result.isConfirmed || result.isDismissed) {
+          setEditStudent(null);
+          // the GR number remains in the input field
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+      });
+      
     } catch (err) {
       setError(err.message);
       if (err.message.toLowerCase().includes("already exists")) {
@@ -727,6 +753,48 @@ function App() {
       window.scrollTo({ top: 0, behavior: 'smooth' });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteStudent = async (e, id) => {
+    e.stopPropagation();
+    const result = await Swal.fire({
+      title: 'Are you sure?',
+      text: "You won't be able to revert this!",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#d33',
+      cancelButtonColor: '#3085d6',
+      confirmButtonText: 'Yes, delete it!'
+    });
+
+    if (result.isConfirmed) {
+      try {
+        const response = await fetch(`${API_URL}/students/${id}`, {
+          method: 'DELETE',
+        });
+        
+        if (!response.ok) {
+           const data = await response.json();
+           throw new Error(data.detail || 'Failed to delete student.');
+        }
+
+        Swal.fire(
+          'Deleted!',
+          'Student has been deleted.',
+          'success'
+        );
+
+        handleSearchSubmit(searchPage);
+        fetchStats();
+        fetchStudents(studentsPage);
+      } catch (err) {
+        Swal.fire(
+          'Error!',
+          err.message,
+          'error'
+        );
+      }
     }
   };
 
@@ -1416,6 +1484,9 @@ function App() {
                             <th>Contact</th>
                             <th>Disabled?</th>
                             <th>Orphan?</th>
+                            {(searchGr.trim() !== '' || searchCollege.trim() !== '' || searchMobile.trim() !== '') && (
+                              <th>Action</th>
+                            )}
                           </tr>
                         </thead>
                         <tbody>
@@ -1454,6 +1525,17 @@ function App() {
                                   {student.orphan ? 'Yes' : 'No'}
                                 </span>
                               </td>
+                              {(searchGr.trim() !== '' || searchCollege.trim() !== '' || searchMobile.trim() !== '') && (
+                                <td>
+                                  <button
+                                    onClick={(e) => handleDeleteStudent(e, student.id)}
+                                    className="btn-danger"
+                                    style={{ padding: '6px 12px', fontSize: '0.8rem', backgroundColor: '#ef4444', color: 'white', border: 'none', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                  >
+                                    <Trash2 size={16} /> Delete
+                                  </button>
+                                </td>
+                              )}
                             </tr>
                           ))}
                         </tbody>
@@ -2023,8 +2105,7 @@ function App() {
                   <p className="page-description">Search for a student by their GR Number, then update their information</p>
                 </div>
 
-                {error && <div className="alert alert-error"><AlertCircle size={18} /> <span>{error}</span></div>}
-                {success && <div className="alert alert-success"><CheckCircle size={18} /> <span>{success}</span></div>}
+
 
                 {/* Step 1: GR Lookup */}
                 <div className="dashboard-widget" style={{ padding: '24px', marginBottom: '24px' }}>
@@ -2070,6 +2151,9 @@ function App() {
                     </button>
                   </div>
                 </div>
+
+                {error && <div className="alert alert-error" style={{ marginBottom: '24px' }}><AlertCircle size={18} /> <span>{error}</span></div>}
+                {success && <div className="alert alert-success" style={{ marginBottom: '24px' }}><CheckCircle size={18} /> <span>{success}</span></div>}
 
                 {/* Step 2: Edit Form – shown only after student is loaded */}
                 {editStudent && (

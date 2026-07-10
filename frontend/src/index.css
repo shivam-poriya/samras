@@ -290,14 +290,14 @@ form button[type="button"]:disabled,
 
 .alert-error {
   background: rgba(244, 63, 94, 0.1);
-  border: 1px solid rgba(244, 63, 94, 0.2);
-  color: #fda4af;
+  border: 1px solid rgba(244, 63, 94, 0.3);
+  color: #e11d48;
 }
 
 .alert-success {
   background: rgba(16, 185, 129, 0.1);
-  border: 1px solid rgba(16, 185, 129, 0.2);
-  color: #a7f3d0;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  color: #059669;
 }
 
 /* Sidebar Styling (Matches reference GitRAG dashboard style) */

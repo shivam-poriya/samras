@@ -852,3 +852,19 @@ def update_student(student_id: int, updates: StudentUpdate, db: Session = Depend
     db.commit()
     db.refresh(student)
     return student
+
+@app.delete("/students/{student_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_student(student_id: int, db: Session = Depends(get_db)):
+    """
+    Deletes a student profile by their ID.
+    """
+    student = db.query(Student).filter(Student.id == student_id).first()
+    if not student:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Student with ID {student_id} not found."
+        )
+    
+    db.delete(student)
+    db.commit()
+    return
