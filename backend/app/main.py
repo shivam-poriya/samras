@@ -199,13 +199,19 @@ def forgot_password(request: ForgotPasswordRequest, db: Session = Depends(get_db
     Returns generic message regardless of whether email exists.
     """
     user = db.query(User).filter(User.email == request.email).first()
-    if user:
-        otp = f"{random.randint(100000, 999999)}"
-        user.otp = otp
-        user.otp_expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
-        db.commit()
-        send_otp_email(user.email, otp)
-    return {"message": "If this email is registered, an OTP has been sent to it."}
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Email not found in our records."
+        )
+        
+    otp = f"{random.randint(100000, 999999)}"
+    user.otp = otp
+    user.otp_expiry = datetime.now(timezone.utc).replace(tzinfo=None) + timedelta(minutes=5)
+    db.commit()
+    send_otp_email(user.email, otp)
+    
+    return {"message": "An OTP has been sent to your registered email."}
 
 
 @app.post("/verify-forgot-otp", status_code=status.HTTP_200_OK)

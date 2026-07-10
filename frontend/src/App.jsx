@@ -223,10 +223,25 @@ function App() {
       if (!response.ok) {
         throw new Error(data.detail || 'Something went wrong.');
       }
-      setSuccess('If this email is registered, an OTP has been sent to it.');
+      setSuccess('An OTP has been sent to your registered email.');
       setForgotStep('otp');
     } catch (err) {
-      setError(err.message);
+      if (err.message.toLowerCase().includes('email not found')) {
+        Swal.fire({
+          title: 'No Email Found',
+          text: 'This email is not registered in our database.',
+          icon: 'warning',
+          confirmButtonColor: '#ea580c'
+        });
+      } else {
+        Swal.fire({
+          title: 'Error!',
+          text: err.message,
+          icon: 'error',
+          confirmButtonColor: '#ea580c'
+        });
+      }
+      setError('');
     } finally {
       setLoading(false);
     }
